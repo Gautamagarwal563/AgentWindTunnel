@@ -44,3 +44,12 @@ export type Project = {
   api_key: string
   created_at: string
 }
+
+export async function getUser() {
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
+}
+
+export async function signOut() {
+  await supabase.auth.signOut()
+}

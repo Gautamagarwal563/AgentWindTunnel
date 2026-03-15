@@ -1,0 +1,36 @@
+name: WindTunnel Prompt Check
+
+on:
+  pull_request:
+    paths:
+      - 'prompts/**'
+      - '*.txt'
+
+jobs:
+  windtunnel:
+    runs-on: ubuntu-latest
+    name: Check prompt regression
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install WindTunnel
+        run: pip install windtunnel-ai
+
+      - name: Run WindTunnel Check
+        env:
+          WINDTUNNEL_API_KEY: ${{ secrets.WINDTUNNEL_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          windtunnel check \
+            --baseline @prompts/baseline.txt \
+            --challenger @prompts/challenger.txt \
+            --n 20 \
+            --fail-on-block

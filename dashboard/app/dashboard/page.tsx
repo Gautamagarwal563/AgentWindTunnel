@@ -1,8 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { supabase, type Run } from '@/lib/supabase'
+import { supabase, type Run, signOut } from '@/lib/supabase'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -147,6 +148,7 @@ function NavItem({
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [runs, setRuns] = useState<Run[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -207,6 +209,16 @@ export default function DashboardPage() {
           <NavItem icon="🔑" label="API Keys" href="/api-keys" />
           <NavItem icon="📚" label="Docs" href="/docs" />
         </nav>
+
+        {/* Sign Out */}
+        <div className="px-2">
+          <button
+            onClick={async () => { await signOut(); router.push('/login') }}
+            className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/5"
+          >
+            Sign Out
+          </button>
+        </div>
 
         {/* Version badge */}
         <div className="px-4 mt-4">
