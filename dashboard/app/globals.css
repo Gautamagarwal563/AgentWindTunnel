@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  --background: #030712;
+  --foreground: #f9fafb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+/* Code blocks */
+.code-block {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 16px;
+  font-family: var(--font-mono), 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+/* Glow effects */
+.glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.1); }
+.glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.1); }
+.glow-purple { box-shadow: 0 0 20px rgba(168, 85, 247, 0.1); }
+
+/* Animate gradient */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+/* Pulse ring */
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
