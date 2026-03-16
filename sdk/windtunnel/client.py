@@ -2,13 +2,12 @@ import os
 import uuid
 import json
 from datetime import datetime, timezone
-from typing import Optional
 import requests
-from openai import OpenAI
+import anthropic
 
 
 class WindTunnel:
-    def __init__(self, api_key: str, supabase_url: str, supabase_key: str):
+    def __init__(self, api_key: str, supabase_url: str, supabase_key: str, anthropic_api_key: str = None):
         self.api_key = api_key
         self.supabase_url = supabase_url.rstrip('/')
         self.supabase_key = supabase_key
@@ -19,11 +18,16 @@ class WindTunnel:
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
         }
+
+        if anthropic_api_key is None:
+            anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not anthropic_api_key:
+            raise ValueError("Anthropic API key is required. Set ANTHROPIC_API_KEY env var.")
+        self.anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
+
         self._ensure_project()
 
     def _ensure_project(self):
-        """Find or create the project associated with this API key."""
-        # Try to find existing project
         resp = requests.get(
             f'{self.supabase_url}/rest/v1/projects',
             headers={**self._headers, 'Prefer': ''},
@@ -32,9 +36,7 @@ class WindTunnel:
         data = resp.json()
         if resp.status_code == 200 and data:
             self.project_id = data[0]['id']
-            print(f"[WindTunnel] Using existing project: {self.project_id}")
         else:
-            # Create a new project
             create_resp = requests.post(
                 f'{self.supabase_url}/rest/v1/projects',
                 headers=self._headers,
@@ -50,7 +52,6 @@ class WindTunnel:
                     self.project_id = project_data[0]['id']
                 else:
                     self.project_id = project_data['id']
-                print(f"[WindTunnel] Created new project: {self.project_id}")
             else:
                 raise RuntimeError(
                     f"Failed to create project: {create_resp.status_code} {create_resp.text}"
@@ -61,7 +62,7 @@ class WindTunnel:
         user_input: str,
         agent_output: str,
         prompt_version: str = 'v1',
-        model: str = 'gpt-4o-mini',
+        model: str = 'claude-haiku-4-5-20251001',
         metadata: dict = None,
         session_id: str = None
     ) -> dict:
@@ -100,26 +101,18 @@ class WindTunnel:
         baseline_prompt: str,
         challenger_prompt: str,
         n_interactions: int = 10,
-        baseline_model: str = 'gpt-4o-mini',
-        challenger_model: str = 'gpt-4o-mini',
+        baseline_model: str = 'claude-haiku-4-5-20251001',
+        challenger_model: str = 'claude-haiku-4-5-20251001',
         run_name: str = None,
         baseline_version: str = 'v1',
         challenger_version: str = 'v2',
-        openai_api_key: str = None
+        on_progress=None,
     ) -> dict:
-        """
-        Fetch last N interactions, replay through both prompts, score with LLM-as-judge.
-        Returns a verdict dict with results.
-        """
-        if openai_api_key is None:
-            openai_api_key = os.environ.get('OPENAI_API_KEY')
-        if not openai_api_key:
-            raise ValueError("OpenAI API key is required. Set OPENAI_API_KEY env var.")
+        """Fetch last N interactions, replay through both prompts, score with LLM-as-judge."""
 
-        openai_client = OpenAI(api_key=openai_api_key)
+        if on_progress:
+            on_progress('fetch', n_interactions)
 
-        # 1. Fetch last N interactions for this project
-        print(f"\n[WindTunnel] Fetching last {n_interactions} interactions...")
         resp = requests.get(
             f'{self.supabase_url}/rest/v1/interactions',
             headers={**self._headers, 'Prefer': ''},
@@ -137,9 +130,8 @@ class WindTunnel:
         if not interactions:
             raise ValueError("No interactions found. Record some interactions first.")
 
-        print(f"[WindTunnel] Found {len(interactions)} interactions to test")
+        total = len(interactions)
 
-        # 2. Create a run record
         run_resp = requests.post(
             f'{self.supabase_url}/rest/v1/runs',
             headers=self._headers,
@@ -153,7 +145,7 @@ class WindTunnel:
                 'baseline_model': baseline_model,
                 'challenger_model': challenger_model,
                 'status': 'running',
-                'total_interactions': len(interactions)
+                'total_interactions': total
             }
         )
 
@@ -164,9 +156,7 @@ class WindTunnel:
         if isinstance(run_data, list):
             run_data = run_data[0]
         run_id = run_data['id']
-        print(f"[WindTunnel] Created run: {run_id}")
 
-        # 3. Replay each interaction through both prompts
         results = []
         better_count = 0
         worse_count = 0
@@ -174,26 +164,12 @@ class WindTunnel:
 
         for i, interaction in enumerate(interactions):
             user_input = interaction['user_input']
-            print(f"\n[WindTunnel] Testing interaction {i+1}/{len(interactions)}")
-            print(f"  User: {user_input[:60]}...")
+            if on_progress:
+                on_progress('test', i + 1, total)
 
-            # Get baseline response
-            baseline_output = self._get_llm_response(
-                openai_client, baseline_prompt, user_input, baseline_model
-            )
-            print(f"  Baseline: {baseline_output[:60]}...")
-
-            # Get challenger response
-            challenger_output = self._get_llm_response(
-                openai_client, challenger_prompt, user_input, challenger_model
-            )
-            print(f"  Challenger: {challenger_output[:60]}...")
-
-            # Score with LLM-as-judge
-            score, reasoning = self._judge_responses(
-                openai_client, user_input, baseline_output, challenger_output
-            )
-            print(f"  Score: {score} | {reasoning[:80]}...")
+            baseline_output = self._get_llm_response(baseline_prompt, user_input, baseline_model)
+            challenger_output = self._get_llm_response(challenger_prompt, user_input, challenger_model)
+            score, reasoning = self._judge_responses(user_input, baseline_output, challenger_output)
 
             if score == 'better':
                 better_count += 1
@@ -202,7 +178,6 @@ class WindTunnel:
             else:
                 neutral_count += 1
 
-            # Save result
             result_resp = requests.post(
                 f'{self.supabase_url}/rest/v1/run_results',
                 headers=self._headers,
@@ -216,9 +191,7 @@ class WindTunnel:
                     'reasoning': reasoning
                 }
             )
-            if result_resp.status_code not in (200, 201):
-                print(f"  Warning: Failed to save result: {result_resp.text}")
-            else:
+            if result_resp.status_code in (200, 201):
                 results.append({
                     'user_input': user_input,
                     'baseline_output': baseline_output,
@@ -227,23 +200,17 @@ class WindTunnel:
                     'reasoning': reasoning
                 })
 
-        # 4. Calculate verdict
-        total = len(interactions)
         regression_rate = worse_count / total if total > 0 else 0
         improvement_rate = better_count / total if total > 0 else 0
 
         if regression_rate >= 0.3:
             verdict = 'BLOCKED'
-            verdict_text = f'DEPLOY BLOCKED - {worse_count}/{total} interactions regressed'
         elif improvement_rate > regression_rate:
             verdict = 'APPROVED'
-            verdict_text = f'DEPLOY APPROVED - {better_count}/{total} interactions improved'
         else:
             verdict = 'NEUTRAL'
-            verdict_text = f'DEPLOY NEUTRAL - No significant change ({neutral_count}/{total} neutral)'
 
-        # 5. Update run with final results
-        update_resp = requests.patch(
+        requests.patch(
             f'{self.supabase_url}/rest/v1/runs',
             headers={**self._headers, 'Prefer': 'return=representation'},
             params={'id': f'eq.{run_id}'},
@@ -260,101 +227,64 @@ class WindTunnel:
         return {
             'run_id': run_id,
             'verdict': verdict,
-            'verdict_text': verdict_text,
             'total': total,
             'better': better_count,
             'worse': worse_count,
             'neutral': neutral_count,
-            'regression_rate': regression_rate,
+            'regression_rate': round(regression_rate * 100),
             'results': results
         }
 
-    def _get_llm_response(
-        self, client: OpenAI, system_prompt: str, user_input: str, model: str
-    ) -> str:
-        """Get a response from an LLM with the given system prompt."""
+    def _get_llm_response(self, system_prompt: str, user_input: str, model: str = 'claude-haiku-4-5-20251001') -> str:
         try:
-            response = client.chat.completions.create(
+            message = self.anthropic_client.messages.create(
                 model=model,
-                messages=[
-                    {'role': 'system', 'content': system_prompt},
-                    {'role': 'user', 'content': user_input}
-                ],
                 max_tokens=500,
-                temperature=0.1
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_input}]
             )
-            return response.choices[0].message.content.strip()
+            return message.content[0].text.strip()
         except Exception as e:
             return f"[Error getting response: {e}]"
 
-    def _judge_responses(
-        self,
-        client: OpenAI,
-        user_input: str,
-        baseline_output: str,
-        challenger_output: str
-    ) -> tuple[str, str]:
-        """Use LLM-as-judge to compare baseline vs challenger responses."""
-        judge_prompt = """You are an expert evaluator for customer support AI responses.
+    def _judge_responses(self, user_input: str, baseline_output: str, challenger_output: str) -> tuple:
+        judge_prompt = """Compare two AI responses and determine which is better.
 
-Compare two AI responses to the same user message and determine which is better.
+User Message: {user_input}
 
-User Message:
-{user_input}
+Response A (Baseline): {baseline_output}
 
-Response A (Baseline):
-{baseline_output}
+Response B (Challenger): {challenger_output}
 
-Response B (Challenger):
-{challenger_output}
+Evaluate: helpfulness, accuracy, completeness, clarity.
 
-Evaluate based on:
-1. Helpfulness - Does it actually solve the user's problem?
-2. Accuracy - Is the information correct and specific?
-3. Empathy - Is the tone appropriate and empathetic?
-4. Completeness - Does it address all aspects of the query?
-5. Clarity - Is it easy to understand?
+Return ONLY a JSON object:
+{{"score": "better" | "worse" | "neutral", "reasoning": "1-2 sentence explanation"}}
 
-Respond with a JSON object in this exact format:
-{{
-  "score": "better" | "worse" | "neutral",
-  "reasoning": "Brief explanation of why (1-2 sentences)"
-}}
-
-Where:
-- "better" = Response B (Challenger) is better than Response A (Baseline)
-- "worse" = Response B (Challenger) is worse than Response A (Baseline)
-- "neutral" = Both responses are roughly equal in quality
-
-Return ONLY the JSON, no other text."""
+- "better" = Response B is better than A
+- "worse" = Response B is worse than A
+- "neutral" = roughly equal""".format(
+            user_input=user_input,
+            baseline_output=baseline_output,
+            challenger_output=challenger_output
+        )
 
         try:
-            response = client.chat.completions.create(
-                model='gpt-4o-mini',
-                messages=[
-                    {
-                        'role': 'user',
-                        'content': judge_prompt.format(
-                            user_input=user_input,
-                            baseline_output=baseline_output,
-                            challenger_output=challenger_output
-                        )
-                    }
-                ],
+            message = self.anthropic_client.messages.create(
+                model='claude-haiku-4-5-20251001',
                 max_tokens=200,
-                temperature=0.0,
-                response_format={"type": "json_object"}
+                messages=[{'role': 'user', 'content': judge_prompt}]
             )
-
-            content = response.choices[0].message.content.strip()
+            content = message.content[0].text.strip()
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            if start >= 0 and end > start:
+                content = content[start:end]
             result = json.loads(content)
             score = result.get('score', 'neutral')
             reasoning = result.get('reasoning', 'No reasoning provided')
-
             if score not in ('better', 'worse', 'neutral'):
                 score = 'neutral'
-
             return score, reasoning
-
         except Exception as e:
             return 'neutral', f'Judge error: {str(e)}'

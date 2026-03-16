@@ -14,13 +14,6 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-  // Get the auth token from cookies
-  const authToken = request.cookies.get('sb-ovaaeoufpwwbnymdcdpi-auth-token')?.value
-
-  if (!authToken) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
   return NextResponse.next()
 }
 

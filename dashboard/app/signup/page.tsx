@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState('')
@@ -15,137 +17,74 @@ export default function SignupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.')
-      return
-    }
-
+    if (password !== confirmPassword) { setError('Passwords do not match.'); return }
     setLoading(true)
-
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    })
-
-    if (authError) {
-      setError(authError.message)
-      setLoading(false)
-      return
-    }
-
+    const { error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
+    if (authError) { setError(authError.message); setLoading(false); return }
     setSuccess(true)
     setLoading(false)
   }
 
+  const inputClass = "bg-[#0a0a0a] border-[#1a1a1a] text-white placeholder:text-[#333] focus-visible:border-[#444] focus-visible:ring-0 h-9"
+  const labelClass = "text-[10px] font-semibold text-[#444] uppercase tracking-widest"
+
   return (
-    <div className="min-h-screen bg-[#080B14] flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[#0D1117] border border-white/10 rounded-2xl p-8">
-        {/* Logo + Title */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-purple-500/30 mb-4">
-            WT
-          </div>
-          <h1 className="text-xl font-semibold text-white tracking-tight">Agent Windtunnel</h1>
-          <p className="text-sm text-gray-500 mt-1">CI/CD for AI Agents</p>
+    <div className="min-h-screen bg-black flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-black font-bold text-sm mb-4">WT</div>
+          <h1 className="text-base font-semibold text-white tracking-tight">Agent Windtunnel</h1>
+          <p className="text-xs text-[#444] mt-0.5">CI/CD for AI Agents</p>
         </div>
 
         {success ? (
-          <div className="text-center space-y-4">
-            <div className="text-4xl">✉️</div>
-            <h2 className="text-base font-semibold text-white">Check your email</h2>
-            <p className="text-sm text-gray-400">
-              Check your email to confirm your account. Once confirmed, you can{' '}
-              <Link href="/login" className="text-purple-400 hover:text-purple-300 transition-colors">
-                sign in
-              </Link>
-              .
-            </p>
+          <div className="bg-[#0a0a0a] border border-[#22c55e]/20 rounded-2xl p-6">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center text-2xl">✅</div>
+              <div>
+                <h2 className="text-base font-semibold text-white">Check your email</h2>
+                <p className="text-sm text-[#555] mt-1.5 leading-relaxed">
+                  We sent a confirmation link to <span className="text-white font-medium">{email}</span>. Confirm your account, then{' '}
+                  <Link href="/login" className="text-white underline underline-offset-4 decoration-[#333] hover:decoration-white transition-colors">sign in</Link>.
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
-          <>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-widest">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jane Smith"
-                  className="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white w-full focus:border-purple-500 outline-none placeholder-gray-600 text-sm transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-widest">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white w-full focus:border-purple-500 outline-none placeholder-gray-600 text-sm transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-widest">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white w-full focus:border-purple-500 outline-none placeholder-gray-600 text-sm transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-widest">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white w-full focus:border-purple-500 outline-none placeholder-gray-600 text-sm transition-colors"
-                />
-              </div>
-
-              {error && (
-                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
-                  {error}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 text-white text-sm font-semibold shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-              >
-                {loading ? 'Creating account…' : 'Create Account'}
-              </button>
-            </form>
-
-            <p className="text-center text-sm text-gray-500 mt-6">
-              Already have an account?{' '}
-              <Link href="/login" className="text-purple-400 hover:text-purple-300 transition-colors">
-                Sign in →
-              </Link>
-            </p>
-          </>
+          <div className="bg-[#080808] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-[#111]">
+              <h2 className="text-base font-semibold text-white">Create an account</h2>
+              <p className="text-xs text-[#444] mt-0.5">Start testing your AI agents today</p>
+            </div>
+            <div className="px-6 py-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="fullName" className={labelClass}>Full Name</Label>
+                  <Input id="fullName" type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Smith" className={inputClass} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className={labelClass}>Email</Label>
+                  <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={inputClass} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className={labelClass}>Password</Label>
+                  <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword" className={labelClass}>Confirm Password</Label>
+                  <Input id="confirmPassword" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+                </div>
+                {error && <p className="text-sm text-[#ef4444] bg-[#ef4444]/10 border border-[#ef4444]/20 rounded-lg px-3 py-2.5">{error}</p>}
+                <button type="submit" disabled={loading} className="w-full h-9 bg-white text-black font-semibold rounded-lg hover:bg-[#e5e5e5] transition-colors text-sm disabled:opacity-50 mt-1">
+                  {loading ? 'Creating account…' : 'Create Account'}
+                </button>
+              </form>
+              <p className="text-center text-xs text-[#444] mt-5">
+                Already have an account?{' '}
+                <Link href="/login" className="text-white underline underline-offset-4 decoration-[#333] hover:decoration-white transition-colors">Sign in →</Link>
+              </p>
+            </div>
+          </div>
         )}
       </div>
     </div>

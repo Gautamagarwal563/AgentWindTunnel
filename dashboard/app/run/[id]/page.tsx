@@ -1,12 +1,17 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase, type Run, type RunResult } from '@/lib/supabase'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import Link from 'next/link'
+import { useEffect, useState, useCallback } from 'react'
+import { useParams } from 'next/navigation'
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -23,7 +28,7 @@ function truncate(str: string, len: number) {
   return str.length > len ? str.slice(0, len) + '…' : str
 }
 
-// ─── Custom Donut Center Label ──────────────────────────────────────────────
+// ─── Custom Donut Center Label ───────────────────────────────────────────────
 
 function DonutCenterLabel({ total }: { total: number }) {
   return (
@@ -38,23 +43,20 @@ function DonutCenterLabel({ total }: { total: number }) {
   )
 }
 
-// ─── Custom Tooltip ─────────────────────────────────────────────────────────
+// ─── Custom Tooltip ──────────────────────────────────────────────────────────
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) {
+function CustomTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: { name: string; value: number }[]
+}) {
   if (active && payload && payload.length) {
     return (
-      <div
-        style={{
-          background: '#0D1117',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 10,
-          padding: '8px 14px',
-          fontSize: 12,
-          color: '#e5e7eb',
-        }}
-      >
-        <span style={{ fontWeight: 600 }}>{payload[0].name}</span>
-        <span style={{ marginLeft: 8, color: '#9ca3af' }}>{payload[0].value}</span>
+      <div className="bg-[#0d1117] border border-white/[0.08] rounded-xl px-3.5 py-2 text-xs text-gray-200">
+        <span className="font-semibold">{payload[0].name}</span>
+        <span className="ml-2 text-gray-400">{payload[0].value}</span>
       </div>
     )
   }
@@ -66,24 +68,65 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { name
 function ScoreBadge({ score }: { score: 'better' | 'worse' | 'neutral' }) {
   if (score === 'worse')
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-red-500/15 text-red-400 border border-red-500/30 uppercase tracking-widest">
+      <Badge className="bg-red-500/15 text-red-400 border border-red-500/30 uppercase tracking-widest text-[11px] font-bold hover:bg-red-500/15">
         ❌ WORSE
-      </span>
+      </Badge>
     )
   if (score === 'better')
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-green-500/15 text-green-400 border border-green-500/30 uppercase tracking-widest">
+      <Badge className="bg-green-500/15 text-green-400 border border-green-500/30 uppercase tracking-widest text-[11px] font-bold hover:bg-green-500/15">
         ✅ BETTER
-      </span>
+      </Badge>
     )
   return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white/[0.06] text-gray-400 border border-white/[0.08] uppercase tracking-widest">
+    <Badge className="bg-white/[0.06] text-gray-400 border border-white/[0.08] uppercase tracking-widest text-[11px] font-bold hover:bg-white/[0.06]">
       ➖ NEUTRAL
-    </span>
+    </Badge>
   )
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Loading Skeleton ────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#02040a]">
+      {/* Topbar skeleton */}
+      <header className="sticky top-0 z-30 bg-[#02040a]/85 backdrop-blur-md border-b border-white/[0.06]">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+          <Skeleton className="w-32 h-8 bg-white/[0.06]" />
+          <Skeleton className="w-48 h-4 bg-white/[0.06]" />
+          <Skeleton className="w-28 h-8 bg-white/[0.06]" />
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+        {/* Verdict banner skeleton */}
+        <Skeleton className="w-full h-52 rounded-2xl bg-white/[0.04]" />
+
+        {/* Two-col skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+          <Skeleton className="lg:col-span-2 h-64 rounded-2xl bg-white/[0.04]" />
+          <Skeleton className="lg:col-span-3 h-64 rounded-2xl bg-white/[0.04]" />
+        </div>
+
+        {/* Prompt diff skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Skeleton className="h-52 rounded-2xl bg-white/[0.04]" />
+          <Skeleton className="h-52 rounded-2xl bg-white/[0.04]" />
+        </div>
+
+        {/* Interaction analysis skeleton */}
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="w-full h-16 rounded-xl bg-white/[0.04]" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function RunDetailPage() {
   const params = useParams()
@@ -131,58 +174,33 @@ export default function RunDetailPage() {
     return () => clearInterval(interval)
   }, [run, fetchRunData])
 
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading ─────────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: '#080B14' }}
-      >
-        <div className="flex flex-col items-center gap-5">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-500 animate-spin" />
-          </div>
-          <div className="text-center">
-            <p className="text-gray-300 text-sm font-medium tracking-wide">Loading analysis</p>
-            <p className="text-gray-600 text-xs mt-1">Fetching run data…</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <LoadingSkeleton />
 
-  // ── Error ──────────────────────────────────────────────────────────────────
+  // ── Error ───────────────────────────────────────────────────────────────────
 
   if (error || !run) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: '#080B14' }}
-      >
-        <div
-          className="rounded-2xl p-10 text-center max-w-md w-full mx-4"
-          style={{
-            background: '#0D1117',
-            border: '1px solid rgba(239,68,68,0.2)',
-          }}
-        >
-          <div className="text-4xl mb-4">⚠️</div>
-          <p className="text-red-400 font-semibold text-lg mb-2">Failed to load run</p>
-          <p className="text-red-400/60 text-sm mb-8">{error || 'Run not found'}</p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 text-sm transition-colors font-medium"
-          >
-            ← Back to all runs
-          </Link>
-        </div>
+      <div className="min-h-screen bg-[#02040a] flex items-center justify-center">
+        <Card className="bg-[#0a0d14] border-red-500/20 max-w-md w-full mx-4">
+          <CardContent className="pt-10 pb-10 text-center">
+            <div className="text-4xl mb-4">⚠️</div>
+            <p className="text-red-400 font-semibold text-lg mb-2">Failed to load run</p>
+            <p className="text-red-400/60 text-sm mb-8">{error || 'Run not found'}</p>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 text-sm transition-colors font-medium"
+            >
+              ← Back to all runs
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
-  // ── Derived State ──────────────────────────────────────────────────────────
+  // ── Derived State ────────────────────────────────────────────────────────────
 
   const regressionRate =
     run.total_interactions > 0
@@ -199,33 +217,26 @@ export default function RunDetailPage() {
     { name: 'Neutral', value: run.neutral },
   ].filter((d) => d.value > 0)
 
-  const chartColors = ['#22c55e', '#ef4444', '#6b7280']
   const colorMap: Record<string, string> = {
     Better: '#22c55e',
     Worse: '#ef4444',
     Neutral: '#6b7280',
   }
 
-  // Top failure reason from judge notes
   const worseResults = results.filter((r) => r.score === 'worse')
   const topFailureReason = worseResults[0]?.reasoning
     ? truncate(worseResults[0].reasoning, 120)
     : null
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen text-gray-100" style={{ background: '#080B14' }}>
+    <div className="min-h-screen bg-[#02040a] text-gray-100">
 
-      {/* ── Sticky Top Bar ─────────────────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-30 backdrop-blur-md"
-        style={{
-          background: 'rgba(8,11,20,0.85)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
+      {/* ── Topbar ────────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-[#02040a]/85 backdrop-blur-md border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-purple-500/20">
@@ -245,463 +256,368 @@ export default function RunDetailPage() {
             </span>
           </nav>
 
-          {/* Right actions */}
+          {/* Right */}
           <div className="flex items-center gap-3 shrink-0">
             {isRunning && (
-              <span className="hidden sm:inline-flex items-center gap-2 text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-full">
+              <Badge className="hidden sm:inline-flex gap-2 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/10">
                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
                 Live
-              </span>
+              </Badge>
             )}
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors px-3 py-1.5 rounded-lg"
-              style={{ border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              ← Back to Runs
-            </Link>
+            <Button variant="outline" size="sm" className="border-white/[0.08] bg-transparent text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] text-xs">
+              <Link href="/">← Back to Runs</Link>
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
 
-        {/* ── Breadcrumb text line ──────────────────────────────────────────── */}
-        <div className="text-xs text-gray-600 font-mono">
-          Agent Windtunnel &nbsp;›&nbsp; Runs &nbsp;›&nbsp;
-          <span className="text-gray-400">{run.name || run.id}</span>
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* VERDICT HERO BANNER                                                */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <section
-          className="rounded-2xl overflow-hidden relative"
-          style={
+        {/* ── Verdict Banner ────────────────────────────────────────────────────── */}
+        <Card
+          className={
             isBlocked
-              ? {
-                  background: 'linear-gradient(to right, rgba(69,10,10,0.6), rgba(69,10,10,0.2))',
-                  border: '1px solid rgba(239,68,68,0.2)',
-                }
+              ? 'bg-gradient-to-r from-red-950/40 to-transparent border-red-500/20 overflow-hidden'
               : isApproved
-              ? {
-                  background: 'linear-gradient(to right, rgba(5,46,22,0.6), rgba(5,46,22,0.2))',
-                  border: '1px solid rgba(34,197,94,0.2)',
-                }
-              : {
-                  background: 'linear-gradient(to right, rgba(20,20,40,0.6), rgba(20,20,40,0.2))',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }
+              ? 'bg-gradient-to-r from-green-950/40 to-transparent border-green-500/20 overflow-hidden'
+              : 'bg-[#0a0d14] border-white/[0.06] overflow-hidden'
           }
         >
-          {/* Glow blob */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: isBlocked
-                ? 'radial-gradient(ellipse at 10% 50%, rgba(239,68,68,0.08) 0%, transparent 60%)'
-                : isApproved
-                ? 'radial-gradient(ellipse at 10% 50%, rgba(34,197,94,0.08) 0%, transparent 60%)'
-                : 'radial-gradient(ellipse at 10% 50%, rgba(168,85,247,0.06) 0%, transparent 60%)',
-            }}
-          />
+          <CardContent className="p-8 md:p-10">
+            <div className="flex flex-col lg:flex-row items-start gap-10">
 
-          <div className="relative p-8 md:p-10 flex flex-col lg:flex-row items-start gap-10">
-            {/* Left: Verdict */}
-            <div className="flex-1 min-w-0">
-              <div className="text-8xl leading-none mb-6 select-none">
-                {isBlocked ? '🚫' : isApproved ? '✅' : isRunning ? '⏳' : '➖'}
-              </div>
-              <h2
-                className="font-black tracking-tight mb-3 leading-none"
-                style={{
-                  fontSize: '3rem',
-                  color: isBlocked ? '#f87171' : isApproved ? '#4ade80' : '#d1d5db',
-                  textShadow: isBlocked
-                    ? '0 0 60px rgba(239,68,68,0.3)'
+              {/* Left: Verdict identity */}
+              <div className="flex-1 min-w-0">
+                <div className="text-7xl leading-none mb-6 select-none">
+                  {isBlocked ? '🚫' : isApproved ? '✅' : isRunning ? '⏳' : '➖'}
+                </div>
+                <h2
+                  className={`font-black tracking-tight mb-3 leading-none text-4xl ${
+                    isBlocked
+                      ? 'text-red-400'
+                      : isApproved
+                      ? 'text-green-400'
+                      : 'text-gray-300'
+                  }`}
+                >
+                  {isBlocked
+                    ? 'DEPLOY BLOCKED'
                     : isApproved
-                    ? '0 0 60px rgba(34,197,94,0.3)'
-                    : 'none',
-                }}
-              >
-                {isBlocked
-                  ? 'DEPLOY BLOCKED'
-                  : isApproved
-                  ? 'DEPLOY APPROVED'
-                  : isRunning
-                  ? 'RUN IN PROGRESS'
-                  : 'DEPLOY NEUTRAL'}
-              </h2>
-              <p
-                className="text-base leading-relaxed max-w-lg"
-                style={{
-                  color: isBlocked
-                    ? 'rgba(252,165,165,0.75)'
-                    : isApproved
-                    ? 'rgba(134,239,172,0.75)'
-                    : 'rgba(209,213,219,0.6)',
-                }}
-              >
-                {isBlocked
-                  ? `The challenger prompt performed worse on ${run.failed}/${run.total_interactions} interactions. Deployment was prevented.`
-                  : isApproved
-                  ? `The challenger prompt improved or matched quality on ${run.passed + run.neutral}/${run.total_interactions} interactions. Safe to deploy.`
-                  : isRunning
-                  ? `Evaluating interactions in real time — ${run.total_interactions} processed so far.`
-                  : `No significant quality change detected across all ${run.total_interactions} interactions.`}
-              </p>
-            </div>
-
-            {/* Right: 2×2 metric grid */}
-            <div className="grid grid-cols-2 gap-3 w-full lg:w-auto lg:min-w-[300px] shrink-0">
-              {/* Regressions */}
-              <div
-                className="rounded-xl p-5 text-center"
-                style={{
-                  background: run.failed > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)',
-                  border: run.failed > 0 ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(255,255,255,0.06)',
-                }}
-              >
-                <p className="text-4xl font-black text-red-400 tabular-nums">{run.failed}</p>
-                <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest font-semibold">
-                  Regressions
-                </p>
-              </div>
-
-              {/* Improvements */}
-              <div
-                className="rounded-xl p-5 text-center"
-                style={{
-                  background: run.passed > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.03)',
-                  border: run.passed > 0 ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(255,255,255,0.06)',
-                }}
-              >
-                <p className="text-4xl font-black text-green-400 tabular-nums">{run.passed}</p>
-                <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest font-semibold">
-                  Improvements
-                </p>
-              </div>
-
-              {/* Neutral */}
-              <div
-                className="rounded-xl p-5 text-center"
-                style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}
-              >
-                <p className="text-4xl font-black text-gray-400 tabular-nums">{run.neutral}</p>
-                <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest font-semibold">
-                  Neutral
-                </p>
-              </div>
-
-              {/* Regression Rate */}
-              <div
-                className="rounded-xl p-5 text-center"
-                style={{
-                  background:
-                    regressionRate >= 30
-                      ? 'rgba(239,68,68,0.08)'
-                      : regressionRate > 0
-                      ? 'rgba(234,179,8,0.05)'
-                      : 'rgba(34,197,94,0.05)',
-                  border:
-                    regressionRate >= 30
-                      ? '1px solid rgba(239,68,68,0.2)'
-                      : regressionRate > 0
-                      ? '1px solid rgba(234,179,8,0.15)'
-                      : '1px solid rgba(34,197,94,0.15)',
-                }}
-              >
+                    ? 'DEPLOY APPROVED'
+                    : isRunning
+                    ? 'RUN IN PROGRESS'
+                    : 'DEPLOY NEUTRAL'}
+                </h2>
                 <p
-                  className="text-4xl font-black tabular-nums"
-                  style={{
-                    color:
-                      regressionRate >= 30
-                        ? '#f87171'
-                        : regressionRate > 0
-                        ? '#facc15'
-                        : '#4ade80',
-                  }}
+                  className={`text-base leading-relaxed max-w-lg ${
+                    isBlocked
+                      ? 'text-red-300/75'
+                      : isApproved
+                      ? 'text-green-300/75'
+                      : 'text-gray-300/60'
+                  }`}
                 >
-                  {regressionRate}%
+                  {isBlocked
+                    ? `The challenger prompt performed worse on ${run.failed}/${run.total_interactions} interactions. Deployment was prevented.`
+                    : isApproved
+                    ? `The challenger prompt improved or matched quality on ${run.passed + run.neutral}/${run.total_interactions} interactions. Safe to deploy.`
+                    : isRunning
+                    ? `Evaluating interactions in real time — ${run.total_interactions} processed so far.`
+                    : `No significant quality change detected across all ${run.total_interactions} interactions.`}
                 </p>
-                <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest font-semibold">
-                  Regression Rate
-                </p>
-                <p className="text-[9px] text-gray-700 mt-1 font-mono">threshold: 30%</p>
               </div>
-            </div>
-          </div>
-        </section>
 
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* DONUT + SUMMARY                                                    */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-          {/* Donut (2/5) */}
-          <div
-            className="lg:col-span-2 rounded-2xl p-6 flex flex-col"
-            style={{ background: '#0D1117', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">
-              Result Distribution
-            </p>
-            <div className="flex-1 flex items-center justify-center min-h-[200px]">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={85}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
+              {/* Right: 2x2 stat sub-cards */}
+              <div className="grid grid-cols-2 gap-3 w-full lg:w-auto lg:min-w-[300px] shrink-0">
+                {/* Regressions */}
+                <Card
+                  className={
+                    run.failed > 0
+                      ? 'bg-red-500/[0.08] border-red-500/20 text-center'
+                      : 'bg-white/[0.03] border-white/[0.06] text-center'
+                  }
+                >
+                  <CardContent className="p-5">
+                    <p className="text-4xl font-black text-red-400 tabular-nums">{run.failed}</p>
+                    <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest font-semibold">
+                      Regressions
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Improvements */}
+                <Card
+                  className={
+                    run.passed > 0
+                      ? 'bg-green-500/[0.08] border-green-500/20 text-center'
+                      : 'bg-white/[0.03] border-white/[0.06] text-center'
+                  }
+                >
+                  <CardContent className="p-5">
+                    <p className="text-4xl font-black text-green-400 tabular-nums">{run.passed}</p>
+                    <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest font-semibold">
+                      Improvements
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Neutral */}
+                <Card className="bg-white/[0.03] border-white/[0.06] text-center">
+                  <CardContent className="p-5">
+                    <p className="text-4xl font-black text-gray-400 tabular-nums">{run.neutral}</p>
+                    <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest font-semibold">
+                      Neutral
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Regression Rate */}
+                <Card
+                  className={
+                    regressionRate >= 30
+                      ? 'bg-red-500/[0.08] border-red-500/20 text-center'
+                      : regressionRate > 0
+                      ? 'bg-yellow-500/[0.05] border-yellow-500/15 text-center'
+                      : 'bg-green-500/[0.05] border-green-500/15 text-center'
+                  }
+                >
+                  <CardContent className="p-5">
+                    <p
+                      className={`text-4xl font-black tabular-nums ${
+                        regressionRate >= 30
+                          ? 'text-red-400'
+                          : regressionRate > 0
+                          ? 'text-yellow-400'
+                          : 'text-green-400'
+                      }`}
                     >
-                      {chartData.map((entry) => (
-                        <Cell key={entry.name} fill={colorMap[entry.name] || '#6b7280'} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <DonutCenterLabel total={run.total_interactions} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-gray-600 text-sm">No data yet</div>
-              )}
-            </div>
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-5 mt-3">
-              {[
-                { label: 'Better', color: '#22c55e', value: run.passed },
-                { label: 'Worse', color: '#ef4444', value: run.failed },
-                { label: 'Neutral', color: '#6b7280', value: run.neutral },
-              ].map(({ label, color, value }) => (
-                <div key={label} className="flex items-center gap-1.5">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ background: color }}
-                  />
-                  <span className="text-xs text-gray-500">
-                    {label}
-                    <span className="ml-1 text-gray-400 font-semibold">{value}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Summary (3/5) */}
-          <div
-            className="lg:col-span-3 rounded-2xl p-6 flex flex-col justify-between"
-            style={{ background: '#0D1117', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">
-                What this means
-              </p>
-              <p
-                className="text-lg font-semibold leading-relaxed mb-4"
-                style={{
-                  color: isBlocked ? '#fca5a5' : isApproved ? '#86efac' : '#d1d5db',
-                }}
-              >
-                {isBlocked
-                  ? `Your new prompt degraded quality in ${run.failed} out of ${run.total_interactions} real user conversations.`
-                  : isApproved
-                  ? `Your new prompt improved or maintained quality across all ${run.total_interactions} tested conversations.`
-                  : isRunning
-                  ? `Evaluation in progress. Results updating in real time.`
-                  : `Your new prompt produced equivalent quality across all tested conversations.`}
-              </p>
-              {isBlocked && topFailureReason && (
-                <div
-                  className="rounded-xl p-4"
-                  style={{
-                    background: 'rgba(239,68,68,0.06)',
-                    border: '1px solid rgba(239,68,68,0.15)',
-                  }}
-                >
-                  <p className="text-[11px] font-semibold text-red-500 uppercase tracking-widest mb-2">
-                    Most common failure
-                  </p>
-                  <p className="text-sm text-gray-400 italic leading-relaxed">
-                    &ldquo;{topFailureReason}&rdquo;
-                  </p>
-                </div>
-              )}
-              {isApproved && (
-                <div
-                  className="rounded-xl p-4"
-                  style={{
-                    background: 'rgba(34,197,94,0.06)',
-                    border: '1px solid rgba(34,197,94,0.15)',
-                  }}
-                >
-                  <p className="text-[11px] font-semibold text-green-500 uppercase tracking-widest mb-2">
-                    Recommendation
-                  </p>
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    The challenger prompt is ready for production. No quality regressions were detected.
-                    {run.passed > 0 && ` It outperformed the baseline on ${run.passed} interaction${run.passed > 1 ? 's' : ''}.`}
-                  </p>
-                </div>
-              )}
-            </div>
-            {/* Mini stat bar */}
-            {run.total_interactions > 0 && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between text-[10px] text-gray-600 font-mono mb-2">
-                  <span>0%</span>
-                  <span className="text-gray-500">quality distribution</span>
-                  <span>100%</span>
-                </div>
-                <div className="h-2 rounded-full overflow-hidden flex gap-0.5" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  {run.passed > 0 && (
-                    <div
-                      className="h-full rounded-l-full"
-                      style={{
-                        width: `${(run.passed / run.total_interactions) * 100}%`,
-                        background: '#22c55e',
-                      }}
-                    />
-                  )}
-                  {run.neutral > 0 && (
-                    <div
-                      className="h-full"
-                      style={{
-                        width: `${(run.neutral / run.total_interactions) * 100}%`,
-                        background: '#6b7280',
-                      }}
-                    />
-                  )}
-                  {run.failed > 0 && (
-                    <div
-                      className="h-full rounded-r-full"
-                      style={{
-                        width: `${(run.failed / run.total_interactions) * 100}%`,
-                        background: '#ef4444',
-                      }}
-                    />
-                  )}
-                </div>
+                      {regressionRate}%
+                    </p>
+                    <p className="text-[10px] text-gray-500 mt-2 uppercase tracking-widest font-semibold">
+                      Regression Rate
+                    </p>
+                    <p className="text-[9px] text-gray-700 mt-1 font-mono">threshold: 30%</p>
+                  </CardContent>
+                </Card>
               </div>
-            )}
-          </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Donut + Explanation ───────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+          {/* Donut chart (2/5) */}
+          <Card className="lg:col-span-2 bg-[#0a0d14] border-white/[0.06] flex flex-col">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+                Result Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col">
+              <div className="flex-1 flex items-center justify-center min-h-[200px]">
+                {chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={85}
+                        paddingAngle={3}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {chartData.map((entry) => (
+                          <Cell key={entry.name} fill={colorMap[entry.name] || '#6b7280'} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <DonutCenterLabel total={run.total_interactions} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-gray-600 text-sm">No data yet</p>
+                )}
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center justify-center gap-5 mt-3">
+                {[
+                  { label: 'Better', color: '#22c55e', value: run.passed },
+                  { label: 'Worse', color: '#ef4444', value: run.failed },
+                  { label: 'Neutral', color: '#6b7280', value: run.neutral },
+                ].map(({ label, color, value }) => (
+                  <div key={label} className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+                    <span className="text-xs text-gray-500">
+                      {label}
+                      <span className="ml-1 text-gray-400 font-semibold">{value}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* What this means (3/5) */}
+          <Card className="lg:col-span-3 bg-[#0a0d14] border-white/[0.06] flex flex-col">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+                What this means
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-between">
+              <div>
+                <p
+                  className={`text-lg font-semibold leading-relaxed mb-4 ${
+                    isBlocked
+                      ? 'text-red-300'
+                      : isApproved
+                      ? 'text-green-300'
+                      : 'text-gray-300'
+                  }`}
+                >
+                  {isBlocked
+                    ? `Your new prompt degraded quality in ${run.failed} out of ${run.total_interactions} real user conversations.`
+                    : isApproved
+                    ? `Your new prompt improved or maintained quality across all ${run.total_interactions} tested conversations.`
+                    : isRunning
+                    ? 'Evaluation in progress. Results updating in real time.'
+                    : `Your new prompt produced equivalent quality across all tested conversations.`}
+                </p>
+
+                {isBlocked && topFailureReason && (
+                  <div className="rounded-xl p-4 bg-red-500/[0.06] border border-red-500/15">
+                    <p className="text-[11px] font-semibold text-red-500 uppercase tracking-widest mb-2">
+                      Most common failure
+                    </p>
+                    <p className="text-sm text-gray-400 italic leading-relaxed">
+                      &ldquo;{topFailureReason}&rdquo;
+                    </p>
+                  </div>
+                )}
+
+                {isApproved && (
+                  <div className="rounded-xl p-4 bg-green-500/[0.06] border border-green-500/15">
+                    <p className="text-[11px] font-semibold text-green-500 uppercase tracking-widest mb-2">
+                      Recommendation
+                    </p>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      The challenger prompt is ready for production. No quality regressions were detected.
+                      {run.passed > 0 &&
+                        ` It outperformed the baseline on ${run.passed} interaction${run.passed > 1 ? 's' : ''}.`}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Mini stat bar */}
+              {run.total_interactions > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center justify-between text-[10px] text-gray-600 font-mono mb-2">
+                    <span>0%</span>
+                    <span className="text-gray-500">quality distribution</span>
+                    <span>100%</span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden flex gap-0.5 bg-white/[0.04]">
+                    {run.passed > 0 && (
+                      <div
+                        className="h-full rounded-l-full bg-green-500"
+                        style={{ width: `${(run.passed / run.total_interactions) * 100}%` }}
+                      />
+                    )}
+                    {run.neutral > 0 && (
+                      <div
+                        className="h-full bg-gray-500"
+                        style={{ width: `${(run.neutral / run.total_interactions) * 100}%` }}
+                      />
+                    )}
+                    {run.failed > 0 && (
+                      <div
+                        className="h-full rounded-r-full bg-red-500"
+                        style={{ width: `${(run.failed / run.total_interactions) * 100}%` }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* PROMPT DIFF                                                        */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* ── Prompt Diff ───────────────────────────────────────────────────────── */}
         <section>
           <div className="flex items-center gap-3 mb-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
               Prompt Diff
             </h3>
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.04)' }} />
+            <Separator className="flex-1 bg-white/[0.04]" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Baseline */}
-            <div
-              className="rounded-2xl overflow-hidden flex flex-col"
-              style={{ background: '#0D1117', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <div
-                className="px-5 py-4 flex items-center justify-between gap-3"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base">📘</span>
-                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Baseline
-                  </span>
+            <Card className="bg-[#0a0d14] border-white/[0.06] overflow-hidden flex flex-col">
+              <CardHeader className="px-5 py-4 border-b border-white/[0.05]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">📘</span>
+                    <CardTitle className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                      Baseline
+                    </CardTitle>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="font-mono bg-blue-500/12 text-blue-400 border border-blue-500/20 hover:bg-blue-500/12">
+                      {run.baseline_version}
+                    </Badge>
+                    <span className="text-xs text-gray-600 hidden sm:block">{run.baseline_model}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="font-mono text-xs px-2.5 py-1 rounded-md font-semibold"
-                    style={{
-                      background: 'rgba(59,130,246,0.12)',
-                      color: '#60a5fa',
-                      border: '1px solid rgba(59,130,246,0.2)',
-                    }}
-                  >
-                    {run.baseline_version}
-                  </span>
-                  <span className="text-xs text-gray-600 hidden sm:block">{run.baseline_model}</span>
-                </div>
-              </div>
-              <div className="p-4 flex-1">
-                <pre
-                  className="font-mono text-xs text-gray-400 leading-relaxed whitespace-pre-wrap break-words overflow-y-auto rounded-lg p-4"
-                  style={{
-                    maxHeight: '12rem',
-                    background: 'rgba(0,0,0,0.3)',
-                    border: '1px solid rgba(255,255,255,0.04)',
-                  }}
-                >
+              </CardHeader>
+              <CardContent className="p-4 flex-1">
+                <pre className="font-mono text-xs text-gray-400 leading-relaxed whitespace-pre-wrap break-words overflow-y-auto rounded-lg p-4 max-h-48 bg-black/30 border border-white/[0.04]">
                   {run.baseline_prompt}
                 </pre>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Challenger */}
-            <div
-              className="rounded-2xl overflow-hidden flex flex-col"
-              style={{
-                background: isBlocked ? 'rgba(69,10,10,0.15)' : '#0D1117',
-                border: isBlocked ? '1px solid rgba(239,68,68,0.15)' : '1px solid rgba(255,255,255,0.06)',
-              }}
+            <Card
+              className={
+                isBlocked
+                  ? 'bg-red-950/15 border-red-500/15 overflow-hidden flex flex-col'
+                  : 'bg-[#0a0d14] border-white/[0.06] overflow-hidden flex flex-col'
+              }
             >
-              {/* Warning banner for blocked */}
               {isBlocked && (
-                <div
-                  className="px-5 py-2.5 flex items-center gap-2"
-                  style={{
-                    background: 'rgba(239,68,68,0.1)',
-                    borderBottom: '1px solid rgba(239,68,68,0.15)',
-                  }}
-                >
+                <div className="px-5 py-2.5 flex items-center gap-2 bg-red-500/10 border-b border-red-500/15">
                   <span className="text-sm">⚠️</span>
                   <span className="text-xs font-semibold text-red-400">
                     This prompt was blocked from production
                   </span>
                 </div>
               )}
-              <div
-                className="px-5 py-4 flex items-center justify-between gap-3"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base">📙</span>
-                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                    Challenger
-                  </span>
+              <CardHeader className="px-5 py-4 border-b border-white/[0.05]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">📙</span>
+                    <CardTitle className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                      Challenger
+                    </CardTitle>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="font-mono bg-purple-500/12 text-purple-400 border border-purple-500/20 hover:bg-purple-500/12">
+                      {run.challenger_version}
+                    </Badge>
+                    <span className="text-xs text-gray-600 hidden sm:block">{run.challenger_model}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="font-mono text-xs px-2.5 py-1 rounded-md font-semibold"
-                    style={{
-                      background: 'rgba(168,85,247,0.12)',
-                      color: '#c084fc',
-                      border: '1px solid rgba(168,85,247,0.2)',
-                    }}
-                  >
-                    {run.challenger_version}
-                  </span>
-                  <span className="text-xs text-gray-600 hidden sm:block">{run.challenger_model}</span>
-                </div>
-              </div>
-              <div className="p-4 flex-1">
+              </CardHeader>
+              <CardContent className="p-4 flex-1">
                 <pre
-                  className="font-mono text-xs text-gray-400 leading-relaxed whitespace-pre-wrap break-words overflow-y-auto rounded-lg p-4"
+                  className="font-mono text-xs text-gray-400 leading-relaxed whitespace-pre-wrap break-words overflow-y-auto rounded-lg p-4 max-h-48 bg-black/30"
                   style={{
-                    maxHeight: '12rem',
-                    background: 'rgba(0,0,0,0.3)',
                     border: isBlocked
                       ? '1px solid rgba(239,68,68,0.08)'
                       : '1px solid rgba(255,255,255,0.04)',
@@ -709,35 +625,27 @@ export default function RunDetailPage() {
                 >
                   {run.challenger_prompt}
                 </pre>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* INTERACTION ANALYSIS                                               */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* ── Interaction Analysis ──────────────────────────────────────────────── */}
         <section>
           <div className="flex items-center gap-4 mb-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
               Interaction Analysis
             </h3>
             {results.length > 0 && (
-              <span
-                className="text-xs font-bold px-2.5 py-1 rounded-full tabular-nums"
-                style={{
-                  background: 'rgba(168,85,247,0.12)',
-                  color: '#c084fc',
-                  border: '1px solid rgba(168,85,247,0.2)',
-                }}
-              >
+              <Badge className="bg-purple-500/12 text-purple-400 border border-purple-500/20 tabular-nums hover:bg-purple-500/12">
                 {results.length}
-              </span>
+              </Badge>
             )}
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.04)' }} />
+            <Separator className="flex-1 bg-white/[0.04]" />
             {results.length > 0 && (
               <span className="text-xs text-gray-600">
-                {run.failed} regression{run.failed !== 1 ? 's' : ''} · {run.passed} improvement{run.passed !== 1 ? 's' : ''} · {run.neutral} neutral
+                {run.failed} regression{run.failed !== 1 ? 's' : ''} · {run.passed}{' '}
+                improvement{run.passed !== 1 ? 's' : ''} · {run.neutral} neutral
               </span>
             )}
           </div>
@@ -757,7 +665,7 @@ export default function RunDetailPage() {
                       ? 'rgba(239,68,68,0.04)'
                       : isBetter
                       ? 'rgba(34,197,94,0.03)'
-                      : '#0D1117',
+                      : '#0a0d14',
                     border: isWorse
                       ? '1px solid rgba(239,68,68,0.18)'
                       : isBetter
@@ -767,21 +675,12 @@ export default function RunDetailPage() {
                       ? '3px solid rgba(239,68,68,0.6)'
                       : isBetter
                       ? '3px solid rgba(34,197,94,0.5)'
-                      : '3px solid rgba(255,255,255,0.04)',
+                      : '3px solid transparent',
                   }}
                 >
-                  {/* Collapsed header */}
+                  {/* Collapsed header row */}
                   <button
-                    className="w-full text-left px-5 py-4 flex items-start sm:items-center justify-between gap-4 transition-colors"
-                    style={{
-                      ['--hover-bg' as string]: 'rgba(255,255,255,0.02)',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.02)'
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-                    }}
+                    className="w-full text-left px-5 py-4 flex items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors"
                     onClick={() => setExpandedRow(isExpanded ? null : result.id)}
                   >
                     <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
@@ -802,8 +701,8 @@ export default function RunDetailPage() {
                     <div className="flex items-center gap-3 shrink-0">
                       <ScoreBadge score={result.score} />
                       <span
-                        className="text-gray-600 text-xs transition-transform duration-300 select-none"
-                        style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }}
+                        className="text-gray-600 text-xs select-none transition-transform duration-300 inline-block"
+                        style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
                       >
                         ▼
                       </span>
@@ -812,35 +711,17 @@ export default function RunDetailPage() {
 
                   {/* Expanded panel */}
                   {isExpanded && (
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div className="border-t border-white/[0.05]">
                       {/* Response columns */}
-                      <div
-                        className="grid grid-cols-1 md:grid-cols-2"
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-                      >
-                        {/* Baseline col */}
-                        <div
-                          className="flex flex-col"
-                          style={{ borderRight: '1px solid rgba(255,255,255,0.05)' }}
-                        >
-                          <div
-                            className="px-5 py-3 flex items-center gap-2.5"
-                            style={{
-                              background: 'rgba(59,130,246,0.07)',
-                              borderBottom: '1px solid rgba(255,255,255,0.04)',
-                            }}
-                          >
+                      <div className="grid grid-cols-1 md:grid-cols-2 border-b border-white/[0.05]">
+                        {/* Baseline column */}
+                        <div className="flex flex-col border-r border-white/[0.05]">
+                          <div className="px-5 py-3 flex items-center gap-2.5 bg-blue-500/[0.07] border-b border-white/[0.04]">
                             <span className="text-sm">📘</span>
                             <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">
                               Baseline
                             </span>
-                            <span
-                              className="ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded"
-                              style={{
-                                background: 'rgba(59,130,246,0.12)',
-                                color: '#60a5fa',
-                              }}
-                            >
+                            <span className="ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-500/12 text-blue-400">
                               {run.baseline_version}
                             </span>
                           </div>
@@ -851,17 +732,16 @@ export default function RunDetailPage() {
                           </div>
                         </div>
 
-                        {/* Challenger col */}
+                        {/* Challenger column */}
                         <div className="flex flex-col">
                           <div
-                            className="px-5 py-3 flex items-center gap-2.5"
+                            className="px-5 py-3 flex items-center gap-2.5 border-b border-white/[0.04]"
                             style={{
                               background: isWorse
                                 ? 'rgba(239,68,68,0.08)'
                                 : isBetter
                                 ? 'rgba(34,197,94,0.07)'
                                 : 'rgba(168,85,247,0.06)',
-                              borderBottom: '1px solid rgba(255,255,255,0.04)',
                             }}
                           >
                             <span className="text-sm">📙</span>
@@ -873,13 +753,7 @@ export default function RunDetailPage() {
                             >
                               Challenger
                             </span>
-                            <span
-                              className="ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded"
-                              style={{
-                                background: 'rgba(168,85,247,0.12)',
-                                color: '#c084fc',
-                              }}
-                            >
+                            <span className="ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-500/12 text-purple-400">
                               {run.challenger_version}
                             </span>
                           </div>
@@ -900,12 +774,9 @@ export default function RunDetailPage() {
                         </div>
                       </div>
 
-                      {/* Judge reasoning */}
+                      {/* Judge reasoning — full width */}
                       {result.reasoning && (
-                        <div
-                          className="px-6 py-5 flex gap-4"
-                          style={{ background: 'rgba(0,0,0,0.2)' }}
-                        >
+                        <div className="px-6 py-5 flex gap-4 bg-black/20">
                           <span className="text-base shrink-0 mt-0.5">💡</span>
                           <div>
                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
@@ -924,44 +795,35 @@ export default function RunDetailPage() {
             })}
 
             {results.length === 0 && (
-              <div
-                className="rounded-2xl py-20 text-center"
-                style={{
-                  background: '#0D1117',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}
-              >
-                <div className="text-4xl mb-4 opacity-30">
-                  {isRunning ? '⏳' : '📭'}
-                </div>
-                <p className="text-gray-600 text-sm">
-                  {isRunning ? 'Waiting for first interaction results…' : 'No results found for this run.'}
-                </p>
-              </div>
+              <Card className="bg-[#0a0d14] border-white/[0.06]">
+                <CardContent className="py-20 text-center">
+                  <div className="text-4xl mb-4 opacity-30">{isRunning ? '⏳' : '📭'}</div>
+                  <p className="text-gray-600 text-sm">
+                    {isRunning
+                      ? 'Waiting for first interaction results…'
+                      : 'No results found for this run.'}
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* FOOTER                                                             */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <footer
-          className="pt-6"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
-        >
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-gray-700 font-mono">
+        {/* ── Footer ────────────────────────────────────────────────────────────── */}
+        <footer className="pt-6 border-t border-white/[0.04]">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 font-mono text-xs text-slate-700">
             <span>
-              Run ID: <span className="text-gray-600">{run.id}</span>
+              Run ID: <span className="text-slate-600">{run.id}</span>
             </span>
-            <span className="text-gray-800">|</span>
+            <span className="text-slate-800">|</span>
             <span>
-              Created: <span className="text-gray-600">{formatDate(run.created_at)}</span>
+              Created: <span className="text-slate-600">{formatDate(run.created_at)}</span>
             </span>
             {run.completed_at && (
               <>
-                <span className="text-gray-800">|</span>
+                <span className="text-slate-800">|</span>
                 <span>
-                  Completed: <span className="text-gray-600">{formatDate(run.completed_at)}</span>
+                  Completed: <span className="text-slate-600">{formatDate(run.completed_at)}</span>
                 </span>
               </>
             )}
