@@ -17,9 +17,9 @@ def cli():
 @click.option('--challenger', required=True, help='Challenger prompt text or @file.txt')
 @click.option('--n', default=10, show_default=True, help='Number of interactions to test')
 @click.option('--openai-key', envvar='OPENAI_API_KEY', default=None, help='OpenAI API key')
-@click.option('--fail-on-regression', 'fail_on_regression', is_flag=True, default=True, help='Exit 1 if BLOCKED')
-@click.option('--fail-on-block', 'fail_on_regression', is_flag=True, default=True, hidden=True)
-def check(api_key, baseline, challenger, n, openai_key, fail_on_regression):
+@click.option('--anthropic-key', envvar='ANTHROPIC_API_KEY', default=None, help='Anthropic API key (recommended; avoids OpenAI rate limits)')
+@click.option('--no-fail-on-regression', 'fail_on_regression', is_flag=True, default=True, flag_value=False, help='Do not exit 1 even if verdict is BLOCKED')
+def check(api_key, baseline, challenger, n, openai_key, anthropic_key, fail_on_regression):
     """Run a windtunnel regression check. Use in CI/CD pipelines."""
 
     if baseline.startswith('@'):
@@ -44,6 +44,7 @@ def check(api_key, baseline, challenger, n, openai_key, fail_on_regression):
             challenger_prompt=challenger,
             n_interactions=n,
             openai_api_key=openai_key,
+            anthropic_api_key=anthropic_key,
             on_progress=on_progress,
         )
     except Exception as e:

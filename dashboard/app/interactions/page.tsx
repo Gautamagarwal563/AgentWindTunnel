@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { signOut } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type Interaction = {
@@ -44,6 +46,7 @@ function formatDate(iso: string) {
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 export default function InteractionsPage() {
+  const router = useRouter()
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -97,8 +100,16 @@ export default function InteractionsPage() {
           <NavItem icon="⬡" label="API Keys" href="/api-keys" />
           <NavItem icon="◻" label="Docs" href="/docs" />
         </nav>
-        <div className="px-4 pb-5">
-          <span className="text-[9px] font-mono" style={{ color: '#333' }}>beta</span>
+        <div className="px-2 pb-5">
+          <button
+            onClick={async () => { await signOut(); router.push('/login') }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all"
+            style={{ color: '#444' }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.05)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#444'; e.currentTarget.style.background = 'transparent' }}
+          >
+            <span>↪</span> Sign Out
+          </button>
         </div>
       </aside>
 

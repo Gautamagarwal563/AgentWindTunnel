@@ -269,13 +269,15 @@ function LoadingPulse() {
   )
 }
 
-type LiveState = 'idle' | 'loading' | 'done'
+type LiveState = 'idle' | 'loading' | 'done' | 'error'
 
 function TryItLive() {
   const [baseline, setBaseline] = useState('You are a helpful customer support agent. Be concise.')
   const [challenger, setChallenger] = useState('You are a friendly customer support agent. Be detailed and thorough.')
   const [inputs, setInputs] = useState(['How do I cancel my subscription?', 'What payment methods do you accept?'])
   const [liveState, setLiveState] = useState<LiveState>('idle')
+  const [liveResults, setLiveResults] = useState<ResultRow[]>([])
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
 
   function addInput() {
@@ -290,14 +292,34 @@ function TryItLive() {
     if (inputs.length > 1) setInputs(prev => prev.filter((_, i) => i !== idx))
   }
 
-  function runComparison() {
+  async function runComparison() {
     setLiveState('loading')
-    setTimeout(() => {
+    setErrorMsg(null)
+    try {
+      const res = await fetch('/api/demo/judge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          baseline_prompt: baseline,
+          challenger_prompt: challenger,
+          inputs: inputs.filter(i => i.trim().length > 0),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `Request failed with status ${res.status}`)
+      }
+      const data = await res.json()
+      // data: { verdict, passed, failed, neutral, regression_rate, results }
+      setLiveResults(data.results as ResultRow[])
       setLiveState('done')
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
-    }, 2000)
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+      setLiveState('error')
+    }
   }
 
   const canRun = baseline.trim().length > 0 && challenger.trim().length > 0 && inputs.some(i => i.trim().length > 0)
@@ -306,7 +328,7 @@ function TryItLive() {
     <div>
       {/* Form */}
       <AnimatePresence mode="wait">
-        {liveState !== 'done' && (
+        {liveState !== 'done' && liveState !== 'error' && (
           <motion.div key="form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3, ease }}>
             <div className="grid md:grid-cols-2 gap-4 mb-6">
               {/* Baseline */}
@@ -413,6 +435,29 @@ function TryItLive() {
         {liveState === 'loading' && <LoadingPulse />}
       </AnimatePresence>
 
+      {/* Error */}
+      <AnimatePresence>
+        {liveState === 'error' && (
+          <motion.div key="error" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease }}
+            className="rounded-xl px-5 py-4 flex items-center gap-4"
+            style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold" style={{ color: '#fca5a5' }}>Something went wrong</div>
+              <div className="text-xs mt-0.5" style={{ color: '#666' }}>{errorMsg}</div>
+            </div>
+            <button onClick={() => setLiveState('idle')}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg transition-all shrink-0"
+              style={{ border: '1px solid #1a1a1a', color: '#555' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#1a1a1a'; e.currentTarget.style.color = '#555' }}>
+              ← Try Again
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Results */}
       <AnimatePresence>
         {liveState === 'done' && (
@@ -434,7 +479,7 @@ function TryItLive() {
               </button>
             </div>
             <ResultsList
-              results={MOCK_LIVE_RESULTS}
+              results={liveResults}
               baselineLabel="Baseline — Concise"
               challengerLabel="Challenger — Detailed"
             />

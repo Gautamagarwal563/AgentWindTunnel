@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
 </html>`
 
   const emailPayload = {
-    from: 'Windtunnel <noreply@windtunnel.ai>',
+    from: 'Windtunnel <onboarding@resend.dev>',
     to: [ownerEmail],
     subject: `🚫 Windtunnel blocked your deploy — ${runName}`,
     html,

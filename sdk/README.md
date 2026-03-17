@@ -13,7 +13,7 @@ pip install windtunnel-ai
 ```python
 from windtunnel import WindTunnel
 
-wt = WindTunnel(api_key="wt_your_api_key")
+wt = WindTunnel(api_key="wt_...", base_url="https://windtunnel-six.vercel.app")
 
 # 1. In production: record every agent interaction
 wt.record(
@@ -49,6 +49,68 @@ print(result.is_blocked)       # False
 if result.is_blocked:
     raise SystemExit("Deployment blocked: too many regressions")
 ```
+
+## Automated Regression Check with `run_windtunnel()`
+
+`run_windtunnel()` fetches your recorded production interactions, replays them
+through both prompts using an LLM, and calls `check()` — all in one step.
+
+```python
+import os
+from windtunnel import WindTunnel
+
+wt = WindTunnel(api_key="wt_...", base_url="https://windtunnel-six.vercel.app")
+
+result = wt.run_windtunnel(
+    baseline_prompt="You are a helpful support assistant.",
+    challenger_prompt="You are a concise support assistant. Be brief.",
+    n_interactions=10,
+)
+
+print(result["verdict"])          # "APPROVED", "NEUTRAL", or "BLOCKED"
+print(result["verdict_text"])     # Human-readable summary
+print(result["regression_rate"])  # Percentage, e.g. 20
+```
+
+### LLM provider for `run_windtunnel()`
+
+By default, `run_windtunnel()` uses **Anthropic Claude Haiku** to replay
+interactions and score them. Set `ANTHROPIC_API_KEY` in your environment (or
+pass `anthropic_api_key=` directly) and it will be picked up automatically.
+
+> **Recommended:** Use Anthropic over OpenAI. Claude Haiku is fast, cheap, and
+> on a paid tier has no per-minute rate limits — making large test suites
+> significantly faster and more reliable.
+
+If `ANTHROPIC_API_KEY` is not set, the SDK falls back to **OpenAI**
+(`OPENAI_API_KEY`). Set at least one of these environment variables before
+calling `run_windtunnel()`.
+
+```bash
+# Recommended
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Or fall back to OpenAI
+export OPENAI_API_KEY="sk-..."
+```
+
+## CLI Usage
+
+```bash
+# Check connection
+windtunnel status --api-key wt_...
+
+# Run a regression check (reads ANTHROPIC_API_KEY / OPENAI_API_KEY from env)
+windtunnel check \
+  --api-key wt_... \
+  --baseline @prompts/v1.txt \
+  --challenger @prompts/v2.txt \
+  --n 20
+```
+
+The `check` command exits with code `1` if the verdict is `BLOCKED`, making it
+suitable for CI/CD pipelines. Pass `--no-fail-on-regression` to disable this
+behaviour.
 
 ## API Reference
 
@@ -97,6 +159,41 @@ Runs a regression check between two prompts against a set of interactions.
 | `threshold` | `float` | `0.3` | Regression rate above which verdict is `BLOCKED` |
 
 Returns a `RunResult`. Raises `WindTunnelError` on API errors (non-2xx). Does **not** raise on `BLOCKED` verdict — use `result.is_blocked` to gate deployments.
+
+---
+
+### `run_windtunnel(baseline_prompt, challenger_prompt, ...)`
+
+Fetches production interactions, replays them through both prompts with an LLM,
+and returns a verdict dict.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `baseline_prompt` | `str` | required | Current production system prompt |
+| `challenger_prompt` | `str` | required | New system prompt to evaluate |
+| `n_interactions` | `int` | `10` | Number of production interactions to replay |
+| `baseline_version` | `str` | `"v1"` | Label for the baseline |
+| `challenger_version` | `str` | `"v2"` | Label for the challenger |
+| `baseline_model` | `str` | `"gpt-4o-mini"` | OpenAI model (used only when falling back to OpenAI) |
+| `challenger_model` | `str` | `"gpt-4o-mini"` | OpenAI model (used only when falling back to OpenAI) |
+| `anthropic_api_key` | `str` | `None` | Anthropic key (falls back to `ANTHROPIC_API_KEY` env var) |
+| `openai_api_key` | `str` | `None` | OpenAI key (falls back to `OPENAI_API_KEY` env var) |
+| `run_name` | `str` | `None` | Human-readable label for this run |
+| `on_progress` | `Callable` | `None` | Progress callback `(event, *args)` |
+
+Returns a `dict`:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `verdict` | `str` | `"APPROVED"`, `"NEUTRAL"`, or `"BLOCKED"` |
+| `verdict_text` | `str` | Human-readable summary |
+| `regression_rate` | `int` | Regression rate as a percentage (0–100) |
+| `better` | `int` | Interactions where challenger was better |
+| `worse` | `int` | Interactions where challenger was worse |
+| `neutral` | `int` | Interactions with no meaningful difference |
+| `total` | `int` | Total interactions evaluated |
+| `run_id` | `str` | Run ID |
+| `results` | `list` | Per-interaction scores and reasoning |
 
 ---
 
@@ -156,36 +253,12 @@ jobs:
       - name: Run regression check
         env:
           WINDTUNNEL_API_KEY: ${{ secrets.WINDTUNNEL_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          python - <<'EOF'
-          import os, json
-          from windtunnel import WindTunnel, WindTunnelError
-
-          wt = WindTunnel(api_key=os.environ["WINDTUNNEL_API_KEY"])
-
-          with open("prompts/v1.txt") as f:
-              baseline_prompt = f.read()
-          with open("prompts/v2.txt") as f:
-              challenger_prompt = f.read()
-          with open("interactions.json") as f:
-              interactions = json.load(f)
-
-          result = wt.check(
-              baseline_version="v1",
-              challenger_version="v2",
-              baseline_prompt=baseline_prompt,
-              challenger_prompt=challenger_prompt,
-              interactions=interactions,
-              name=f"PR #{os.environ.get('PR_NUMBER', 'unknown')}",
-          )
-
-          print(f"Verdict: {result.verdict}")
-          print(f"Regression rate: {result.regression_rate:.1%}")
-          print(f"Passed: {result.passed} | Failed: {result.failed} | Neutral: {result.neutral}")
-
-          if result.is_blocked:
-              raise SystemExit(f"Deployment blocked: regression rate {result.regression_rate:.1%} exceeds threshold")
-          EOF
+          windtunnel check \
+            --baseline @prompts/v1.txt \
+            --challenger @prompts/v2.txt \
+            --n 20
 ```
 
-Add `WINDTUNNEL_API_KEY` to your repository secrets at **Settings → Secrets and variables → Actions**.
+Add `WINDTUNNEL_API_KEY` and `ANTHROPIC_API_KEY` to your repository secrets at **Settings → Secrets and variables → Actions**.

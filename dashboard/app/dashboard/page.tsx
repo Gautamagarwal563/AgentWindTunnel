@@ -159,10 +159,13 @@ export default function DashboardPage() {
               <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#22c55e' }} />
             </span>
           </div>
-          <button className="text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+          <button
+            onClick={() => window.open('/docs?section=quickstart', '_blank')}
+            className="text-sm font-semibold px-4 py-2 rounded-lg transition-all"
             style={{ background: '#fff', color: '#000' }}
             onMouseEnter={e => { e.currentTarget.style.background = '#e5e5e5' }}
             onMouseLeave={e => { e.currentTarget.style.background = '#fff' }}
+            title="Use the SDK to create runs. See docs →"
           >+ New Run</button>
         </div>
 
