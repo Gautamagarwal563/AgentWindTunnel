@@ -51,7 +51,38 @@ body {
 /* Glow effects */
 .glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.1); }
 .glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.1); }
-.glow-purple { box-shadow: 0 0 20px rgba(168, 85, 247, 0.1); }
+.glow-blue { box-shadow: 0 0 40px rgba(10, 92, 245, 0.15); }
+
+/* Dot grid background for landing page */
+.dot-grid {
+  background-image: radial-gradient(circle, #d4d4cc 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Float animation for hero elements */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50% { transform: translateY(-12px) rotate(-1deg); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(1deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
+
+/* Shimmer for loading states */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Terminal cursor blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor-blink { animation: blink 1s step-end infinite; }
 
 /* Animate gradient */
 @keyframes gradient-shift {

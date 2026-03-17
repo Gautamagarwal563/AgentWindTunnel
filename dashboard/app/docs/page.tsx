@@ -2,44 +2,55 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 
 function NavItem({ icon, label, href, active }: { icon: string; label: string; href: string; active?: boolean }) {
   return (
-    <Link
-      href={href}
-      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-        active ? 'bg-white/[0.06] text-white' : 'text-[#666] hover:text-white hover:bg-white/[0.04]'
-      }`}
+    <Link href={href}
+      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200"
+      style={{
+        background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
+        color: active ? '#fff' : '#555',
+        borderLeft: active ? '2px solid #0A5CF5' : '2px solid transparent',
+      }}
     >
-      <span className="text-base">{icon}</span>
+      <span className="text-sm">{icon}</span>
       <span className="font-medium">{label}</span>
     </Link>
   )
 }
 
-function Code({ children, lang }: { children: string; lang?: string }) {
+function Code({ children }: { children: string }) {
   const [copied, setCopied] = useState(false)
   return (
-    <div className="relative group">
-      <pre className="bg-[#080808] border border-[#1a1a1a] rounded-xl p-4 font-mono text-sm text-[#aaa] overflow-x-auto leading-relaxed">
+    <div className="relative group rounded-xl overflow-hidden" style={{ border: '1px solid #1a1a1a' }}>
+      <pre className="p-4 font-mono text-sm leading-relaxed overflow-x-auto" style={{ background: '#060606', color: '#888' }}>
         <code>{children}</code>
       </pre>
       <button
         onClick={() => { navigator.clipboard.writeText(children); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-        className="absolute top-3 right-3 text-[10px] text-[#444] hover:text-[#888] transition-colors opacity-0 group-hover:opacity-100"
-      >
-        {copied ? 'copied' : 'copy'}
-      </button>
+        className="absolute top-3 right-3 text-[10px] px-2 py-1 rounded transition-all opacity-0 group-hover:opacity-100"
+        style={{ border: copied ? '1px solid rgba(34,197,94,0.3)' : '1px solid #222', color: copied ? '#22c55e' : '#555', background: '#0a0a0a' }}
+      >{copied ? 'copied ✓' : 'copy'}</button>
     </div>
   )
 }
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="mb-16 scroll-mt-8">
-      <h2 className="text-xl font-semibold mb-6 text-white">{title}</h2>
-      {children}
+    <section id={id} className="mb-16 scroll-mt-6">
+      <h2 className="text-xl font-semibold mb-5 tracking-tight text-white">{title}</h2>
+      <div className="space-y-4 text-sm" style={{ color: '#666', lineHeight: '1.7' }}>{children}</div>
     </section>
+  )
+}
+
+function MethodLabel({ children }: { children: string }) {
+  return (
+    <div className="font-mono text-xs px-2.5 py-1 rounded mb-3 inline-block"
+      style={{ background: 'rgba(10,92,245,0.08)', border: '1px solid rgba(10,92,245,0.15)', color: '#60a5fa' }}>
+      {children}
+    </div>
   )
 }
 
@@ -48,7 +59,7 @@ const navLinks = [
   { id: 'record', label: 'Record Interactions' },
   { id: 'check', label: 'Run a Check' },
   { id: 'cicd', label: 'CI/CD Integration' },
-  { id: 'sdk', label: 'Python SDK Reference' },
+  { id: 'sdk', label: 'SDK Reference' },
   { id: 'cli', label: 'CLI Reference' },
 ]
 
@@ -56,15 +67,18 @@ export default function DocsPage() {
   const [activeSection, setActiveSection] = useState('quickstart')
 
   return (
-    <div className="bg-black text-white min-h-screen">
+    <div className="min-h-screen" style={{ background: '#080808', color: '#fff' }}>
+
       {/* App Sidebar */}
-      <aside className="w-52 border-r border-[#1a1a1a] h-screen fixed left-0 top-0 flex flex-col">
-        <div className="px-4 py-5 mb-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-black text-xs font-bold">
-              WT
+      <aside style={{ width: 220, borderRight: '1px solid #111', background: '#080808' }}
+        className="h-screen fixed left-0 top-0 flex flex-col z-30">
+        <div className="px-5 py-6 mb-1">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black text-xs font-bold">WT</div>
+            <div>
+              <div className="text-sm font-semibold tracking-tight">Windtunnel</div>
+              <div className="text-[9px] font-mono" style={{ color: '#333' }}>beta</div>
             </div>
-            <span className="text-sm font-semibold tracking-tight">Windtunnel</span>
           </div>
         </div>
         <nav className="flex-1 px-2 flex flex-col gap-0.5">
@@ -73,51 +87,49 @@ export default function DocsPage() {
           <NavItem icon="⬡" label="API Keys" href="/api-keys" />
           <NavItem icon="◻" label="Docs" href="/docs" active />
         </nav>
-        <div className="px-4 pb-5">
-          <span className="text-[10px] text-[#333] font-mono">beta</span>
-        </div>
       </aside>
 
       {/* Docs layout */}
-      <div className="ml-52 flex">
-        {/* Docs nav */}
-        <nav className="w-48 border-r border-[#111] h-screen sticky top-0 pt-10 px-4 flex flex-col gap-1 shrink-0">
-          <div className="text-[10px] text-[#333] uppercase tracking-widest mb-3 font-medium">On this page</div>
-          {navLinks.map((link) => (
-            <a
-              key={link.id}
-              href={`#${link.id}`}
+      <div style={{ marginLeft: 220 }} className="flex">
+
+        {/* Docs side nav */}
+        <nav className="w-48 h-screen sticky top-0 pt-10 px-4 flex flex-col gap-0.5 shrink-0 overflow-y-auto" style={{ borderRight: '1px solid #111' }}>
+          <div className="text-[9px] font-semibold uppercase tracking-widest mb-3" style={{ color: '#333' }}>On this page</div>
+          {navLinks.map(link => (
+            <a key={link.id} href={`#${link.id}`}
               onClick={() => setActiveSection(link.id)}
-              className={`text-sm py-1.5 px-2 rounded transition-colors ${
-                activeSection === link.id ? 'text-white bg-[#111]' : 'text-[#555] hover:text-[#aaa]'
-              }`}
-            >
-              {link.label}
-            </a>
+              className="text-sm py-1.5 px-2 rounded transition-colors"
+              style={{ color: activeSection === link.id ? '#fff' : '#555', background: activeSection === link.id ? '#111' : 'transparent' }}
+            >{link.label}</a>
           ))}
         </nav>
 
         {/* Content */}
-        <main className="flex-1 max-w-2xl px-10 py-10">
-          <div className="mb-10">
+        <motion.main
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="flex-1 px-10 py-10 max-w-2xl"
+        >
+          <div className="mb-12">
             <h1 className="text-3xl font-semibold tracking-tight mb-2">Documentation</h1>
-            <p className="text-[#555] text-sm">Everything you need to start catching prompt regressions.</p>
+            <p className="text-sm" style={{ color: '#555' }}>Everything you need to start catching prompt regressions.</p>
           </div>
 
           <Section id="quickstart" title="Quick Start">
-            <p className="text-[#666] text-sm mb-4">Install the SDK and set your API keys. You&apos;ll be running checks in under 2 minutes.</p>
-            <Code>{`pip install windtunnel
+            <p>Install the SDK and set your API keys. You&apos;ll be running checks in under 2 minutes.</p>
+            <Code>{`pip install windtunnel-ai
 
 export WINDTUNNEL_API_KEY=wt_your_key_here
 export ANTHROPIC_API_KEY=sk-ant-...`}</Code>
-            <div className="mt-4 p-4 bg-[#080808] border border-[#1a1a1a] rounded-xl">
-              <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Get your API key</div>
-              <p className="text-sm text-[#666]">Find your API key in the <Link href="/api-keys" className="text-white underline underline-offset-4 decoration-[#333]">API Keys</Link> section of the dashboard.</p>
+            <div className="p-4 rounded-xl" style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+              <div className="text-[10px] uppercase tracking-widest mb-1.5 font-semibold" style={{ color: '#444' }}>Get your API key</div>
+              <p>Find your API key in the <Link href="/api-keys" className="text-white underline underline-offset-4 decoration-[#333] hover:decoration-white transition-colors">API Keys</Link> section of the dashboard.</p>
             </div>
           </Section>
 
           <Section id="record" title="Record Interactions">
-            <p className="text-[#666] text-sm mb-4">Wrap your agent to automatically record every interaction to Windtunnel.</p>
+            <p>Wrap your agent to automatically record every interaction to Windtunnel.</p>
             <Code>{`from windtunnel import WindTunnel
 
 wt = WindTunnel(api_key="wt_your_key")
@@ -128,72 +140,102 @@ response = your_agent.run(user_message)
 wt.record(
     user_input=user_message,
     agent_output=response,
-    prompt_version="v1",      # track your prompt version
+    prompt_version="v1",       # track your prompt version
     model="claude-haiku-4-5",  # optional
 )`}</Code>
-            <p className="text-[#555] text-xs mt-3">Recorded interactions become the test suite for future checks. The more you record, the better your coverage.</p>
+            <p style={{ color: '#555' }}>Recorded interactions become the test suite for future checks. The more you record, the better your coverage.</p>
           </Section>
 
           <Section id="check" title="Run a Check">
-            <p className="text-[#666] text-sm mb-4">Compare your baseline prompt against a challenger. Windtunnel replays your recorded interactions through both and scores the results.</p>
+            <p>Compare your baseline prompt against a challenger. Windtunnel replays your recorded interactions through both and scores the results with an LLM judge.</p>
             <Code>{`windtunnel check \\
   --baseline @prompts/v1.txt \\
   --challenger @prompts/v2.txt \\
   --n 20 \\
   --fail-on-regression`}</Code>
-            <div className="mt-4 space-y-3">
-              <div className="font-mono text-xs bg-[#080808] border border-[#1a1a1a] rounded-xl p-4 text-[#aaa]">
-                <div className="text-[#555]">🌪️  Windtunnel check starting...</div>
-                <div className="text-[#555]">   Fetching 20 production interactions...</div>
-                <div className="text-[#555]">   Testing interaction 1/20...</div>
-                <div className="text-[#555]">   ...</div>
-                <div className="text-[#22c55e] mt-2">✅ DEPLOY APPROVED — 5% regression rate (1/20 worse)</div>
-                <div className="text-[#555]">   Run ID: run_abc123</div>
+            <div className="space-y-3">
+              <div className="font-mono text-xs rounded-xl p-4" style={{ background: '#060606', border: '1px solid #1a1a1a' }}>
+                <div style={{ color: '#555' }}>🌪️  Windtunnel check starting...</div>
+                <div style={{ color: '#555' }}>   Fetching 20 production interactions...</div>
+                <div style={{ color: '#555' }}>   Testing interaction 1/20...</div>
+                <div className="mt-2" style={{ color: '#22c55e' }}>✅ DEPLOY APPROVED — 5% regression rate (1/20 worse)</div>
+                <div style={{ color: '#555' }}>   Run ID: run_abc123</div>
               </div>
-              <div className="font-mono text-xs bg-[#080808] border border-[#1a1a1a] rounded-xl p-4 text-[#aaa]">
-                <div className="text-[#ef4444]">🚫 DEPLOY BLOCKED — 60% regression rate (12/20 worse)</div>
-                <div className="text-[#555]">   Run ID: run_xyz789</div>
-                <div className="text-[#555]">   Exit code: 1</div>
+              <div className="font-mono text-xs rounded-xl p-4" style={{ background: '#060606', border: '1px solid rgba(239,68,68,0.15)' }}>
+                <div style={{ color: '#ef4444' }}>🚫 DEPLOY BLOCKED — 60% regression rate (12/20 worse)</div>
+                <div style={{ color: '#555' }}>   Run ID: run_xyz789  ·  Exit code: 1</div>
               </div>
             </div>
           </Section>
 
           <Section id="cicd" title="CI/CD Integration">
-            <p className="text-[#666] text-sm mb-4">Add a Windtunnel check to your GitHub Actions workflow to block deploys automatically.</p>
+            <p>Add Windtunnel to your GitHub Actions workflow to automatically block merges when prompt quality degrades. Copy <code className="font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: '#111', color: '#60a5fa' }}>windtunnel.yml</code> from the dashboard into <code className="font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: '#111', color: '#60a5fa' }}>.github/workflows/</code> in your repo, then add your API key as a repository secret.</p>
             <Code>{`# .github/workflows/windtunnel.yml
 name: Windtunnel Check
 
 on:
   pull_request:
-    paths:
-      - 'prompts/**'
+    branches: [main]
 
 jobs:
-  windtunnel:
+  windtunnel-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Windtunnel
-        run: pip install windtunnel
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Run regression check
-        run: |
-          windtunnel check \\
-            --baseline @prompts/baseline.txt \\
-            --challenger @prompts/challenger.txt \\
-            --n 20 \\
-            --fail-on-regression
+      - run: pip install windtunnel-ai
+
+      - name: Run Windtunnel check
         env:
           WINDTUNNEL_API_KEY: \${{ secrets.WINDTUNNEL_API_KEY }}
-          ANTHROPIC_API_KEY: \${{ secrets.ANTHROPIC_API_KEY }}`}</Code>
-            <p className="text-[#555] text-xs mt-3">The check exits with code 1 if the regression rate exceeds 30%, which fails the PR check automatically.</p>
+        run: |
+          python - <<'EOF'
+          import os, sys, json
+          from pathlib import Path
+          from windtunnel import WindTunnel
+
+          wt = WindTunnel(api_key=os.environ["WINDTUNNEL_API_KEY"])
+
+          # Reads prompts from env vars or falls back to files
+          baseline  = os.environ.get("BASELINE_PROMPT")  or Path("prompts/baseline.txt").read_text()
+          challenger = os.environ.get("CHALLENGER_PROMPT") or Path("prompts/challenger.txt").read_text()
+
+          # Loads tests from windtunnel_tests.json or uses 3 example interactions
+          if Path("windtunnel_tests.json").exists():
+              interactions = json.loads(Path("windtunnel_tests.json").read_text())
+          else:
+              interactions = [
+                  {"user_input": "What is 2+2?",
+                   "baseline_output": "4", "challenger_output": "4"},
+                  {"user_input": "What is the capital of France?",
+                   "baseline_output": "Paris.", "challenger_output": "Paris is the capital of France."},
+                  {"user_input": "Reverse a string in Python.",
+                   "baseline_output": "Use s[::-1].", "challenger_output": "Use s[::-1] or reversed(s)."},
+              ]
+
+          result = wt.check(baseline_prompt=baseline, challenger_prompt=challenger,
+                            interactions=interactions)
+
+          print(f"Verdict: {result['verdict']}  |  Regression rate: {result['regression_rate']:.0%}")
+          sys.exit(1 if result["verdict"] == "BLOCKED" else 0)
+          EOF`}</Code>
+            <div className="p-4 rounded-xl space-y-1.5" style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+              <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#444' }}>Setup</div>
+              <p>1. Download <code className="font-mono text-xs px-1 py-0.5 rounded" style={{ background: '#111', color: '#60a5fa' }}>windtunnel.yml</code> from the dashboard and place it in <code className="font-mono text-xs px-1 py-0.5 rounded" style={{ background: '#111', color: '#60a5fa' }}>.github/workflows/</code>.</p>
+              <p>2. Add <code className="font-mono text-xs px-1 py-0.5 rounded" style={{ background: '#111', color: '#60a5fa' }}>WINDTUNNEL_API_KEY</code> to your repo&apos;s <strong className="text-white font-medium">Settings → Secrets and variables → Actions</strong>.</p>
+              <p>3. Optionally add <code className="font-mono text-xs px-1 py-0.5 rounded" style={{ background: '#111', color: '#60a5fa' }}>windtunnel_tests.json</code> to your repo root with your test interactions.</p>
+            </div>
+            <p style={{ color: '#555' }}>Exits with code 1 if verdict is BLOCKED, failing the PR check and preventing the merge automatically.</p>
           </Section>
 
           <Section id="sdk" title="Python SDK Reference">
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-mono">WindTunnel(api_key)</div>
+                <MethodLabel>WindTunnel(api_key)</MethodLabel>
                 <Code>{`wt = WindTunnel(
     api_key: str,                   # required — your wt_* key
     anthropic_api_key: str = None,  # falls back to ANTHROPIC_API_KEY env
@@ -202,7 +244,7 @@ jobs:
 )`}</Code>
               </div>
               <div>
-                <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-mono">wt.record(...)</div>
+                <MethodLabel>wt.record(...)</MethodLabel>
                 <Code>{`wt.record(
     user_input: str,           # required
     agent_output: str,         # required
@@ -213,7 +255,7 @@ jobs:
 ) -> dict`}</Code>
               </div>
               <div>
-                <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-mono">wt.run_windtunnel(...)</div>
+                <MethodLabel>wt.run_windtunnel(...)</MethodLabel>
                 <Code>{`wt.run_windtunnel(
     baseline_prompt: str,          # required
     challenger_prompt: str,        # required
@@ -235,9 +277,9 @@ jobs:
           </Section>
 
           <Section id="cli" title="CLI Reference">
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-mono">windtunnel check</div>
+                <MethodLabel>windtunnel check</MethodLabel>
                 <Code>{`windtunnel check [OPTIONS]
 
 Options:
@@ -245,21 +287,21 @@ Options:
   --anthropic-key TEXT  Anthropic API key   [env: ANTHROPIC_API_KEY]
   --baseline TEXT       Baseline prompt or @file.txt  [required]
   --challenger TEXT     Challenger prompt or @file.txt  [required]
-  --n INTEGER           Number of interactions to test  [default: 10]
-  --fail-on-regression  Exit code 1 if verdict is BLOCKED  [default: true]`}</Code>
+  --n INTEGER           Interactions to test  [default: 10]
+  --fail-on-regression  Exit 1 if verdict is BLOCKED`}</Code>
               </div>
               <div>
-                <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-mono">windtunnel status</div>
+                <MethodLabel>windtunnel status</MethodLabel>
                 <Code>{`windtunnel status [OPTIONS]
 
 Options:
   --api-key TEXT  Windtunnel API key  [env: WINDTUNNEL_API_KEY]
 
-Verifies connection and prints your project ID.`}</Code>
+Verifies your connection and prints your project ID.`}</Code>
               </div>
             </div>
           </Section>
-        </main>
+        </motion.main>
       </div>
     </div>
   )

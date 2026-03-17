@@ -1,290 +1,223 @@
+from __future__ import annotations
+
 import os
 import uuid
-import json
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from typing import Callable, Optional
+
 import requests
-import anthropic
+
+
+class WindTunnelError(Exception):
+    def __init__(self, message: str, status_code: Optional[int] = None, response_body: Optional[str] = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.response_body = response_body
+
+
+@dataclass
+class RunResult:
+    id: str
+    verdict: str
+    passed: int
+    failed: int
+    neutral: int
+    total_interactions: int
+    regression_rate: float
+    results: list
+    name: Optional[str]
+    created_at: str
+
+    @property
+    def is_blocked(self) -> bool:
+        return self.verdict == "BLOCKED"
 
 
 class WindTunnel:
-    def __init__(self, api_key: str, supabase_url: str, supabase_key: str, anthropic_api_key: str = None):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://windtunnel-six.vercel.app",
+        supabase_url: Optional[str] = None,
+        supabase_key: Optional[str] = None,
+        anthropic_api_key: Optional[str] = None,
+    ):
         self.api_key = api_key
-        self.supabase_url = supabase_url.rstrip('/')
-        self.supabase_key = supabase_key
-        self.project_id = None
-        self._headers = {
-            'apikey': supabase_key,
-            'Authorization': f'Bearer {supabase_key}',
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-        }
+        self.base_url = base_url.rstrip("/")
+        self._anthropic_api_key = anthropic_api_key
+        self._session = requests.Session()
+        self._session.headers.update({
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        })
 
-        if anthropic_api_key is None:
-            anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
-        if not anthropic_api_key:
-            raise ValueError("Anthropic API key is required. Set ANTHROPIC_API_KEY env var.")
-        self.anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
-
-        self._ensure_project()
-
-    def _ensure_project(self):
-        resp = requests.get(
-            f'{self.supabase_url}/rest/v1/projects',
-            headers={**self._headers, 'Prefer': ''},
-            params={'api_key': f'eq.{self.api_key}'}
-        )
-        data = resp.json()
-        if resp.status_code == 200 and data:
-            self.project_id = data[0]['id']
-        else:
-            create_resp = requests.post(
-                f'{self.supabase_url}/rest/v1/projects',
-                headers=self._headers,
-                json={
-                    'name': 'Demo Agent',
-                    'description': 'WindTunnel demo project',
-                    'api_key': self.api_key
-                }
+    def _request(self, method: str, path: str, **kwargs):
+        url = f"{self.base_url}{path}"
+        response = self._session.request(method, url, **kwargs)
+        if not response.ok:
+            raise WindTunnelError(
+                f"Windtunnel API error {response.status_code}: {response.text}",
+                status_code=response.status_code,
+                response_body=response.text,
             )
-            if create_resp.status_code in (200, 201):
-                project_data = create_resp.json()
-                if isinstance(project_data, list):
-                    self.project_id = project_data[0]['id']
-                else:
-                    self.project_id = project_data['id']
-            else:
-                raise RuntimeError(
-                    f"Failed to create project: {create_resp.status_code} {create_resp.text}"
-                )
+        return response.json()
 
     def record(
         self,
         user_input: str,
         agent_output: str,
-        prompt_version: str = 'v1',
-        model: str = 'claude-haiku-4-5-20251001',
-        metadata: dict = None,
-        session_id: str = None
+        prompt_version: str,
+        session_id: Optional[str] = None,
+        model: Optional[str] = None,
+        metadata: Optional[dict] = None,
     ) -> dict:
-        """Record a production interaction to Supabase."""
-        if metadata is None:
-            metadata = {}
-
-        payload = {
-            'project_id': self.project_id,
-            'session_id': session_id or str(uuid.uuid4()),
-            'user_input': user_input,
-            'agent_output': agent_output,
-            'prompt_version': prompt_version,
-            'model': model,
-            'metadata': metadata
+        payload: dict = {
+            "user_input": user_input,
+            "agent_output": agent_output,
+            "prompt_version": prompt_version,
+            "session_id": session_id or str(uuid.uuid4()),
         }
+        if model is not None:
+            payload["model"] = model
+        if metadata is not None:
+            payload["metadata"] = metadata
 
-        resp = requests.post(
-            f'{self.supabase_url}/rest/v1/interactions',
-            headers=self._headers,
-            json=payload
+        return self._request("POST", "/api/interactions", json=payload)
+
+    def check(
+        self,
+        baseline_version: str,
+        challenger_version: str,
+        baseline_prompt: str,
+        challenger_prompt: str,
+        interactions: list[dict],
+        name: Optional[str] = None,
+        baseline_model: Optional[str] = None,
+        challenger_model: Optional[str] = None,
+        threshold: float = 0.3,
+    ) -> RunResult:
+        payload: dict = {
+            "baseline_version": baseline_version,
+            "challenger_version": challenger_version,
+            "baseline_prompt": baseline_prompt,
+            "challenger_prompt": challenger_prompt,
+            "interactions": interactions,
+            "threshold": threshold,
+        }
+        if name is not None:
+            payload["name"] = name
+        if baseline_model is not None:
+            payload["baseline_model"] = baseline_model
+        if challenger_model is not None:
+            payload["challenger_model"] = challenger_model
+
+        data = self._request("POST", "/api/runs", json=payload)
+
+        return RunResult(
+            id=data["id"],
+            verdict=data["verdict"],
+            passed=data["passed"],
+            failed=data["failed"],
+            neutral=data["neutral"],
+            total_interactions=data["total_interactions"],
+            regression_rate=data["regression_rate"],
+            results=data.get("results", []),
+            name=data.get("name"),
+            created_at=data["created_at"],
         )
 
-        if resp.status_code in (200, 201):
-            result = resp.json()
-            if isinstance(result, list):
-                return result[0]
-            return result
-        else:
-            raise RuntimeError(
-                f"Failed to record interaction: {resp.status_code} {resp.text}"
+    def get_interactions(self, limit: int = 10) -> list[dict]:
+        return self._request("GET", f"/api/interactions?limit={limit}")
+
+    def _call_openai(self, model: str, system_prompt: str, user_input: str, api_key: str) -> str:
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_input},
+                ],
+            },
+            timeout=60,
+        )
+        if not response.ok:
+            raise WindTunnelError(
+                f"OpenAI API error {response.status_code}: {response.text}",
+                status_code=response.status_code,
+                response_body=response.text,
             )
+        return response.json()["choices"][0]["message"]["content"]
 
     def run_windtunnel(
         self,
         baseline_prompt: str,
         challenger_prompt: str,
         n_interactions: int = 10,
-        baseline_model: str = 'claude-haiku-4-5-20251001',
-        challenger_model: str = 'claude-haiku-4-5-20251001',
-        run_name: str = None,
-        baseline_version: str = 'v1',
-        challenger_version: str = 'v2',
-        on_progress=None,
+        baseline_version: str = "v1",
+        challenger_version: str = "v2",
+        baseline_model: str = "gpt-4o-mini",
+        challenger_model: str = "gpt-4o-mini",
+        openai_api_key: Optional[str] = None,
+        run_name: Optional[str] = None,
+        on_progress: Optional[Callable] = None,
     ) -> dict:
-        """Fetch last N interactions, replay through both prompts, score with LLM-as-judge."""
+        resolved_openai_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
+        if not resolved_openai_key:
+            raise WindTunnelError("OpenAI API key is required. Pass openai_api_key= or set OPENAI_API_KEY.")
 
         if on_progress:
-            on_progress('fetch', n_interactions)
+            on_progress("fetch", n_interactions)
 
-        resp = requests.get(
-            f'{self.supabase_url}/rest/v1/interactions',
-            headers={**self._headers, 'Prefer': ''},
-            params={
-                'project_id': f'eq.{self.project_id}',
-                'order': 'created_at.desc',
-                'limit': n_interactions
-            }
-        )
+        response = self.get_interactions(limit=n_interactions)
+        raw_interactions = response.get("interactions", response) if isinstance(response, dict) else response
 
-        if resp.status_code != 200:
-            raise RuntimeError(f"Failed to fetch interactions: {resp.status_code} {resp.text}")
-
-        interactions = resp.json()
-        if not interactions:
-            raise ValueError("No interactions found. Record some interactions first.")
-
-        total = len(interactions)
-
-        run_resp = requests.post(
-            f'{self.supabase_url}/rest/v1/runs',
-            headers=self._headers,
-            json={
-                'project_id': self.project_id,
-                'name': run_name or f'Windtunnel Run {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")}',
-                'baseline_version': baseline_version,
-                'challenger_version': challenger_version,
-                'baseline_prompt': baseline_prompt,
-                'challenger_prompt': challenger_prompt,
-                'baseline_model': baseline_model,
-                'challenger_model': challenger_model,
-                'status': 'running',
-                'total_interactions': total
-            }
-        )
-
-        if run_resp.status_code not in (200, 201):
-            raise RuntimeError(f"Failed to create run: {run_resp.status_code} {run_resp.text}")
-
-        run_data = run_resp.json()
-        if isinstance(run_data, list):
-            run_data = run_data[0]
-        run_id = run_data['id']
-
-        results = []
-        better_count = 0
-        worse_count = 0
-        neutral_count = 0
-
-        for i, interaction in enumerate(interactions):
-            user_input = interaction['user_input']
+        interactions = []
+        total = len(raw_interactions)
+        for i, interaction in enumerate(raw_interactions):
             if on_progress:
-                on_progress('test', i + 1, total)
+                on_progress("test", i + 1, total)
 
-            baseline_output = self._get_llm_response(baseline_prompt, user_input, baseline_model)
-            challenger_output = self._get_llm_response(challenger_prompt, user_input, challenger_model)
-            score, reasoning = self._judge_responses(user_input, baseline_output, challenger_output)
+            user_input = interaction.get("user_input", "")
+            baseline_output = self._call_openai(baseline_model, baseline_prompt, user_input, resolved_openai_key)
+            challenger_output = self._call_openai(challenger_model, challenger_prompt, user_input, resolved_openai_key)
 
-            if score == 'better':
-                better_count += 1
-            elif score == 'worse':
-                worse_count += 1
-            else:
-                neutral_count += 1
+            interactions.append({
+                "user_input": user_input,
+                "baseline_output": baseline_output,
+                "challenger_output": challenger_output,
+            })
 
-            result_resp = requests.post(
-                f'{self.supabase_url}/rest/v1/run_results',
-                headers=self._headers,
-                json={
-                    'run_id': run_id,
-                    'interaction_id': interaction['id'],
-                    'user_input': user_input,
-                    'baseline_output': baseline_output,
-                    'challenger_output': challenger_output,
-                    'score': score,
-                    'reasoning': reasoning
-                }
-            )
-            if result_resp.status_code in (200, 201):
-                results.append({
-                    'user_input': user_input,
-                    'baseline_output': baseline_output,
-                    'challenger_output': challenger_output,
-                    'score': score,
-                    'reasoning': reasoning
-                })
-
-        regression_rate = worse_count / total if total > 0 else 0
-        improvement_rate = better_count / total if total > 0 else 0
-
-        if regression_rate >= 0.3:
-            verdict = 'BLOCKED'
-        elif improvement_rate > regression_rate:
-            verdict = 'APPROVED'
-        else:
-            verdict = 'NEUTRAL'
-
-        requests.patch(
-            f'{self.supabase_url}/rest/v1/runs',
-            headers={**self._headers, 'Prefer': 'return=representation'},
-            params={'id': f'eq.{run_id}'},
-            json={
-                'status': 'completed',
-                'passed': better_count,
-                'failed': worse_count,
-                'neutral': neutral_count,
-                'verdict': verdict,
-                'completed_at': datetime.now(timezone.utc).isoformat()
-            }
+        result = self.check(
+            baseline_version=baseline_version,
+            challenger_version=challenger_version,
+            baseline_prompt=baseline_prompt,
+            challenger_prompt=challenger_prompt,
+            interactions=interactions,
+            name=run_name,
         )
+
+        regression_rate_pct = round(result.regression_rate * 100)
+        if result.verdict == "BLOCKED":
+            verdict_text = f"DEPLOY BLOCKED — {regression_rate_pct}% regression rate ({result.failed}/{result.total_interactions} worse)"
+        elif result.verdict == "APPROVED":
+            verdict_text = f"DEPLOY APPROVED — {regression_rate_pct}% regression rate ({result.failed}/{result.total_interactions} worse)"
+        else:
+            verdict_text = f"NEUTRAL — {regression_rate_pct}% regression rate"
 
         return {
-            'run_id': run_id,
-            'verdict': verdict,
-            'total': total,
-            'better': better_count,
-            'worse': worse_count,
-            'neutral': neutral_count,
-            'regression_rate': round(regression_rate * 100),
-            'results': results
+            "verdict": result.verdict,
+            "verdict_text": verdict_text,
+            "regression_rate": regression_rate_pct,
+            "better": result.passed,
+            "worse": result.failed,
+            "neutral": result.neutral,
+            "total": result.total_interactions,
+            "run_id": result.id,
+            "results": result.results,
         }
-
-    def _get_llm_response(self, system_prompt: str, user_input: str, model: str = 'claude-haiku-4-5-20251001') -> str:
-        try:
-            message = self.anthropic_client.messages.create(
-                model=model,
-                max_tokens=500,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_input}]
-            )
-            return message.content[0].text.strip()
-        except Exception as e:
-            return f"[Error getting response: {e}]"
-
-    def _judge_responses(self, user_input: str, baseline_output: str, challenger_output: str) -> tuple:
-        judge_prompt = """Compare two AI responses and determine which is better.
-
-User Message: {user_input}
-
-Response A (Baseline): {baseline_output}
-
-Response B (Challenger): {challenger_output}
-
-Evaluate: helpfulness, accuracy, completeness, clarity.
-
-Return ONLY a JSON object:
-{{"score": "better" | "worse" | "neutral", "reasoning": "1-2 sentence explanation"}}
-
-- "better" = Response B is better than A
-- "worse" = Response B is worse than A
-- "neutral" = roughly equal""".format(
-            user_input=user_input,
-            baseline_output=baseline_output,
-            challenger_output=challenger_output
-        )
-
-        try:
-            message = self.anthropic_client.messages.create(
-                model='claude-haiku-4-5-20251001',
-                max_tokens=200,
-                messages=[{'role': 'user', 'content': judge_prompt}]
-            )
-            content = message.content[0].text.strip()
-            start = content.find('{')
-            end = content.rfind('}') + 1
-            if start >= 0 and end > start:
-                content = content[start:end]
-            result = json.loads(content)
-            score = result.get('score', 'neutral')
-            reasoning = result.get('reasoning', 'No reasoning provided')
-            if score not in ('better', 'worse', 'neutral'):
-                score = 'neutral'
-            return score, reasoning
-        except Exception as e:
-            return 'neutral', f'Judge error: {str(e)}'

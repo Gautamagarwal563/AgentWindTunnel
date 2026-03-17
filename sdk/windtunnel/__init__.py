@@ -1,2 +1,3 @@
-from .client import WindTunnel
-__all__ = ['WindTunnel']
+from .client import WindTunnel, WindTunnelError, RunResult
+
+__all__ = ["WindTunnel", "WindTunnelError", "RunResult"]

@@ -1,0 +1,127 @@
+# Windtunnel CI/CD Workflow
+# Copy this file to .github/workflows/windtunnel.yml in your repo.
+#
+# Required secret: WINDTUNNEL_API_KEY
+# Set it at: Settings → Secrets and variables → Actions → New repository secret
+#
+# Optional env vars (configure in your workflow or repo vars):
+#   BASELINE_PROMPT  — inline prompt text (falls back to prompts/baseline.txt)
+#   CHALLENGER_PROMPT — inline prompt text (falls back to prompts/challenger.txt)
+#
+# Optional test file:
+#   windtunnel_tests.json — list of {user_input, baseline_output, challenger_output}
+#   If absent, 3 hardcoded example interactions are used.
+
+name: Windtunnel Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  windtunnel-check:
+    name: Windtunnel Regression Check
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the repository so we can read prompt files and test data
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Set up Python 3.11
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. Install the Windtunnel SDK
+      - name: Install windtunnel-ai
+        run: pip install windtunnel-ai
+
+      # 4. Run the regression check
+      - name: Run Windtunnel check
+        env:
+          WINDTUNNEL_API_KEY: ${{ secrets.WINDTUNNEL_API_KEY }}
+        run: |
+          python - <<'EOF'
+          import os
+          import sys
+          import json
+          from pathlib import Path
+          from windtunnel import WindTunnel
+
+          api_key = os.environ.get("WINDTUNNEL_API_KEY")
+          if not api_key:
+              print("Error: WINDTUNNEL_API_KEY secret is not set.")
+              sys.exit(1)
+
+          wt = WindTunnel(api_key=api_key)
+
+          # Read prompts — env vars take priority, then fall back to files
+          baseline_prompt = os.environ.get("BASELINE_PROMPT")
+          if not baseline_prompt:
+              baseline_file = Path("prompts/baseline.txt")
+              if baseline_file.exists():
+                  baseline_prompt = baseline_file.read_text().strip()
+              else:
+                  baseline_prompt = "You are a helpful assistant. Answer the user's question concisely."
+
+          challenger_prompt = os.environ.get("CHALLENGER_PROMPT")
+          if not challenger_prompt:
+              challenger_file = Path("prompts/challenger.txt")
+              if challenger_file.exists():
+                  challenger_prompt = challenger_file.read_text().strip()
+              else:
+                  challenger_prompt = "You are a helpful assistant. Answer the user's question concisely and accurately."
+
+          # Load test interactions from file, or use hardcoded examples
+          tests_file = Path("windtunnel_tests.json")
+          if tests_file.exists():
+              interactions = json.loads(tests_file.read_text())
+              print(f"Loaded {len(interactions)} interactions from windtunnel_tests.json")
+          else:
+              print("windtunnel_tests.json not found — using 3 example interactions")
+              interactions = [
+                  {
+                      "user_input": "What is the capital of France?",
+                      "baseline_output": "The capital of France is Paris.",
+                      "challenger_output": "Paris is the capital and largest city of France.",
+                  },
+                  {
+                      "user_input": "Explain what a REST API is in one sentence.",
+                      "baseline_output": "A REST API is a way for systems to communicate over HTTP using standard methods like GET and POST.",
+                      "challenger_output": "REST API is an architectural style for building web services.",
+                  },
+                  {
+                      "user_input": "How do I reverse a string in Python?",
+                      "baseline_output": 'You can reverse a string in Python using slicing: `s[::-1]`.',
+                      "challenger_output": 'Use `s[::-1]` or `"".join(reversed(s))` to reverse a string in Python.',
+                  },
+              ]
+
+          print(f"Baseline prompt: {baseline_prompt[:80]}{'...' if len(baseline_prompt) > 80 else ''}")
+          print(f"Challenger prompt: {challenger_prompt[:80]}{'...' if len(challenger_prompt) > 80 else ''}")
+          print("Running Windtunnel check...")
+
+          result = wt.check(
+              baseline_prompt=baseline_prompt,
+              challenger_prompt=challenger_prompt,
+              interactions=interactions,
+          )
+
+          verdict = result.get("verdict")
+          regression_rate = result.get("regression_rate", 0)
+          run_id = result.get("run_id", "unknown")
+
+          print(f"\nVerdict:        {verdict}")
+          print(f"Regression rate: {regression_rate:.0%}")
+          print(f"Run ID:          {run_id}")
+
+          if verdict == "BLOCKED":
+              print("\n🚫 DEPLOY BLOCKED — regression rate too high. Fix your prompt before merging.")
+              sys.exit(1)
+          else:
+              print("\n✅ DEPLOY APPROVED — prompt quality looks good.")
+              sys.exit(0)
+          EOF

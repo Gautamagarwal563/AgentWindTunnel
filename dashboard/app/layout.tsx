@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -13,12 +13,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const dmSerifDisplay = DM_Serif_Display({
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-display",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "Agent Windtunnel - CI/CD for AI Agents",
-  description: "Record production interactions and catch prompt regressions before they ship",
+  title: "Agent Windtunnel — The deploy gate for AI agents",
+  description: "Catch prompt regressions before they reach users. Record production traffic, replay it against your new prompt, block bad deploys automatically.",
   openGraph: {
-    title: "Agent Windtunnel - CI/CD for AI Agents",
-    description: "Record production interactions and catch prompt regressions before they ship",
+    title: "Agent Windtunnel — The deploy gate for AI agents",
+    description: "Catch prompt regressions before they reach users. Record production traffic, replay it against your new prompt, block bad deploys automatically.",
     type: "website",
   },
 };
@@ -29,10 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("dark", "font-sans", geistSans.variable)} style={{ colorScheme: 'dark' }}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-gray-950 text-gray-100 min-h-screen`}
-      >
+    <html lang="en" className={cn("dark", geistSans.variable, geistMono.variable, dmSerifDisplay.variable)} style={{ colorScheme: 'dark' }}>
+      <body className="bg-background text-foreground min-h-screen antialiased">
         {children}
       </body>
     </html>

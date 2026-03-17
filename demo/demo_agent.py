@@ -24,10 +24,9 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 # CONFIGURATION
 # ============================================================
 
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 PROJECT_API_KEY = os.getenv('PROJECT_API_KEY', 'demo-project-key-123')
+WINDTUNNEL_BASE_URL = os.getenv('WINDTUNNEL_BASE_URL', 'http://localhost:3000')
 
 # ============================================================
 # PROMPTS
@@ -113,10 +112,9 @@ def main():
 
     wt = WindTunnel(
         api_key=PROJECT_API_KEY,
-        supabase_url=SUPABASE_URL,
-        supabase_key=SUPABASE_KEY
+        base_url=WINDTUNNEL_BASE_URL
     )
-    print("[INFO] Connected to Supabase successfully!")
+    print(f"[INFO] Connected to WindTunnel at {WINDTUNNEL_BASE_URL} successfully!")
 
     # ========================================================
     # PHASE 1: Record Production Interactions

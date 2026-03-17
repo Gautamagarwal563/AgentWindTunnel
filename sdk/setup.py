@@ -21,10 +21,7 @@ setup(
     ],
     python_requires=">=3.9",
     install_requires=[
-        "anthropic>=0.40.0",
-        "supabase>=2.0.0",
         "requests>=2.28.0",
-        "python-dotenv>=1.0.0",
         "click>=8.0.0",
     ],
     entry_points={
