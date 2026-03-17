@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json(
-    { ...updatedRun, results },
+    { ...updatedRun, regression_rate, results },
     { status: 200, headers: CORS_HEADERS }
   )
 }

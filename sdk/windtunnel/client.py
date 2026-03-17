@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 import uuid
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -130,29 +131,52 @@ class WindTunnel:
     def get_interactions(self, limit: int = 10) -> list[dict]:
         return self._request("GET", f"/api/interactions?limit={limit}")
 
-    def _call_openai(self, model: str, system_prompt: str, user_input: str, api_key: str) -> str:
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model,
-                "messages": [
+    def _call_llm(self, model: str, system_prompt: str, user_input: str,
+                  openai_api_key: Optional[str] = None, anthropic_api_key: Optional[str] = None) -> str:
+        # Prefer Anthropic if key available (no rate limits on paid tier)
+        ant_key = anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
+        if ant_key:
+            ant_model = "claude-haiku-4-5-20251001"
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": ant_key,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": ant_model,
+                    "max_tokens": 1024,
+                    "system": system_prompt,
+                    "messages": [{"role": "user", "content": user_input}],
+                },
+                timeout=60,
+            )
+            if not response.ok:
+                raise WindTunnelError(f"Anthropic API error {response.status_code}: {response.text}")
+            return response.json()["content"][0]["text"]
+
+        # Fall back to OpenAI
+        oai_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
+        if not oai_key:
+            raise WindTunnelError("No LLM key found. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.")
+        for attempt in range(3):
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {oai_key}", "Content-Type": "application/json"},
+                json={"model": model, "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input},
-                ],
-            },
-            timeout=60,
-        )
-        if not response.ok:
-            raise WindTunnelError(
-                f"OpenAI API error {response.status_code}: {response.text}",
-                status_code=response.status_code,
-                response_body=response.text,
+                ]},
+                timeout=60,
             )
-        return response.json()["choices"][0]["message"]["content"]
+            if response.status_code == 429:
+                time.sleep(22 * (attempt + 1))
+                continue
+            if not response.ok:
+                raise WindTunnelError(f"OpenAI API error {response.status_code}: {response.text}")
+            return response.json()["choices"][0]["message"]["content"]
+        raise WindTunnelError("OpenAI rate limit exceeded after retries.")
 
     def run_windtunnel(
         self,
@@ -164,13 +188,10 @@ class WindTunnel:
         baseline_model: str = "gpt-4o-mini",
         challenger_model: str = "gpt-4o-mini",
         openai_api_key: Optional[str] = None,
+        anthropic_api_key: Optional[str] = None,
         run_name: Optional[str] = None,
         on_progress: Optional[Callable] = None,
     ) -> dict:
-        resolved_openai_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
-        if not resolved_openai_key:
-            raise WindTunnelError("OpenAI API key is required. Pass openai_api_key= or set OPENAI_API_KEY.")
-
         if on_progress:
             on_progress("fetch", n_interactions)
 
@@ -184,8 +205,8 @@ class WindTunnel:
                 on_progress("test", i + 1, total)
 
             user_input = interaction.get("user_input", "")
-            baseline_output = self._call_openai(baseline_model, baseline_prompt, user_input, resolved_openai_key)
-            challenger_output = self._call_openai(challenger_model, challenger_prompt, user_input, resolved_openai_key)
+            baseline_output = self._call_llm(baseline_model, baseline_prompt, user_input, openai_api_key, anthropic_api_key)
+            challenger_output = self._call_llm(challenger_model, challenger_prompt, user_input, openai_api_key, anthropic_api_key)
 
             interactions.append({
                 "user_input": user_input,

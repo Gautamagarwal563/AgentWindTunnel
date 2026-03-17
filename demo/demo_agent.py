@@ -208,7 +208,7 @@ def main():
     print(f"   ✅ Better (improvements):  {result['better']}")
     print(f"   ❌ Worse (regressions):    {result['worse']}")
     print(f"   ➖ Neutral:                {result['neutral']}")
-    print(f"   📉 Regression rate:        {result['regression_rate']:.0%}")
+    print(f"   📉 Regression rate:        {result['regression_rate']}%")
 
     print(f"\n📋 Interaction Details:")
     print("─" * 60)
@@ -231,7 +231,7 @@ def main():
     print("=" * 60)
 
     print(f"\n🔗 View detailed results in the dashboard:")
-    print(f"   http://localhost:3000/run/{result['run_id']}")
+    print(f"   https://windtunnel-six.vercel.app/run/{result['run_id']}")
     print(f"\n[INFO] Run ID: {result['run_id']}")
 
     return result
