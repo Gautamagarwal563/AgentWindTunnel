@@ -567,99 +567,33 @@ jobs:
         </div>
       </section>
 
-      {/* ─── PRICING ────────────────────────────────────────────────── */}
+      {/* ─── FREE & OPEN SOURCE ─────────────────────────────────────── */}
       <section className="py-28 px-6" style={{ borderTop: '1px solid #E8E8E4' }}>
-        <div className="max-w-5xl mx-auto">
-          <motion.div {...inView()} className="text-center mb-16">
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#B0B0A8' }}>Pricing</p>
-            <h2 className="leading-tight tracking-tight" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: '#0A0A0A' }}>
-              Simple, transparent pricing.
-            </h2>
-            <p className="mt-4 text-sm" style={{ color: '#9B9B9B' }}>Start free. Scale as you grow. No surprises.</p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              {
-                name: 'Free',
-                price: '$0',
-                period: 'forever',
-                desc: 'Self-host or use our cloud. Everything you need to get started.',
-                features: ['500 interactions / month', '5 runs / month', 'CLI + SDK', 'Self-hosted dashboard', 'Community support'],
-                cta: 'Get started free',
-                highlight: false,
-                badge: null,
-              },
-              {
-                name: 'Pro',
-                price: '$29',
-                period: '/month',
-                desc: 'Cloud-hosted, no setup. For teams shipping AI agents to production.',
-                features: ['10,000 interactions / month', 'Unlimited runs', 'GitHub Actions integration', 'Advanced analytics dashboard', 'Slack notifications', 'Email support'],
-                cta: 'Start free trial',
-                highlight: true,
-                badge: 'Most Popular',
-              },
-              {
-                name: 'Team',
-                price: '$99',
-                period: '/month',
-                desc: 'For growing engineering orgs with multiple agents and projects.',
-                features: ['Unlimited interactions', 'Unlimited runs', 'RBAC + audit logs', 'SSO / SAML', 'Custom thresholds per project', 'SLA + dedicated support'],
-                cta: 'Talk to us',
-                highlight: false,
-                badge: null,
-              },
-            ].map((plan, i) => (
-              <motion.div key={plan.name} {...inView(i * 0.1)}
-                className="rounded-2xl p-7 flex flex-col relative"
-                style={{
-                  background: plan.highlight ? '#0A0A0A' : '#FFFFFF',
-                  border: plan.highlight ? '1px solid #0A5CF5' : '1px solid #E8E8E4',
-                  boxShadow: plan.highlight ? '0 8px 40px rgba(10,92,245,0.15)' : '0 1px 4px rgba(0,0,0,0.04)',
-                }}
-              >
-                {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                    style={{ background: '#0A5CF5', color: '#fff' }}>{plan.badge}</div>
-                )}
-                <div className="mb-6">
-                  <p className="text-sm font-semibold mb-2" style={{ color: plan.highlight ? '#9B9B9B' : '#6B6B6B' }}>{plan.name}</p>
-                  <div className="flex items-baseline gap-1 mb-3">
-                    <span className="font-black tracking-tight" style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', color: plan.highlight ? '#FFFFFF' : '#0A0A0A' }}>{plan.price}</span>
-                    {plan.period && <span className="text-sm" style={{ color: plan.highlight ? '#555' : '#9B9B9B' }}>{plan.period}</span>}
-                  </div>
-                  <p className="text-sm leading-relaxed" style={{ color: plan.highlight ? '#666' : '#9B9B9B' }}>{plan.desc}</p>
-                </div>
-                <ul className="space-y-2.5 flex-1 mb-8">
-                  {plan.features.map(f => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: plan.highlight ? '#888' : '#6B6B6B' }}>
-                      <span className="mt-0.5 shrink-0" style={{ color: plan.highlight ? '#0A5CF5' : '#22c55e' }}>✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/signup">
-                  <button className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all"
-                    style={{
-                      background: plan.highlight ? '#0A5CF5' : 'transparent',
-                      color: plan.highlight ? '#fff' : '#0A0A0A',
-                      border: plan.highlight ? 'none' : '1px solid #E8E8E4',
-                    }}
-                    onMouseEnter={e => {
-                      if (plan.highlight) e.currentTarget.style.background = '#0848c4'
-                      else { e.currentTarget.style.background = '#0A0A0A'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#0A0A0A' }
-                    }}
-                    onMouseLeave={e => {
-                      if (plan.highlight) e.currentTarget.style.background = '#0A5CF5'
-                      else { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#0A0A0A'; e.currentTarget.style.borderColor = '#E8E8E4' }
-                    }}
-                  >{plan.cta}</button>
-                </Link>
-              </motion.div>
-            ))}
+        <motion.div {...inView()} className="max-w-2xl mx-auto text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#B0B0A8' }}>Pricing</p>
+          <h2 className="leading-tight tracking-tight mb-4" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: '#0A0A0A' }}>
+            Free and open source.
+          </h2>
+          <p className="text-sm mb-10" style={{ color: '#9B9B9B' }}>
+            Self-host the dashboard, use the SDK, run as many tests as you need. No credit card, no limits.
+          </p>
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <Link href="/signup">
+              <button className="px-8 py-3 rounded-lg text-sm font-semibold transition-all"
+                style={{ background: '#0A5CF5', color: '#fff', boxShadow: '0 4px 20px rgba(10,92,245,0.3)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#0848c4' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#0A5CF5' }}
+              >Get started free →</button>
+            </Link>
+            <a href="https://github.com/Gautamagarwal563/AgentWindTunnel" target="_blank" rel="noopener noreferrer">
+              <button className="px-8 py-3 rounded-lg text-sm font-semibold transition-all"
+                style={{ background: 'transparent', color: '#0A0A0A', border: '1px solid #E8E8E4' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#0A0A0A'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#0A0A0A' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#0A0A0A'; e.currentTarget.style.borderColor = '#E8E8E4' }}
+              >View on GitHub →</button>
+            </a>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ─── CTA ────────────────────────────────────────────────────── */}
