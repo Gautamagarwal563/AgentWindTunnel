@@ -106,7 +106,7 @@ function BrandingPanel() {
 
       {/* Bottom */}
       <div className="flex items-center gap-4">
-        <span className="text-[11px]" style={{ color: '#333' }}>Free · Pro $29/mo · Team $99/mo</span>
+        <span className="text-[11px]" style={{ color: '#333' }}>Free · Open Source</span>
       </div>
     </div>
   )
@@ -262,7 +262,7 @@ export default function SignupPage() {
                 </button>
 
                 <p className="text-[10px] text-center leading-relaxed" style={{ color: '#333' }}>
-                  By signing up you agree to our Terms of Service and Privacy Policy.
+                  Free forever for open source projects.
                 </p>
               </form>
 
