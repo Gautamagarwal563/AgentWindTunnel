@@ -13,7 +13,7 @@ pip install windtunnel-ai
 ```python
 from windtunnel import WindTunnel
 
-wt = WindTunnel(api_key="wt_...", base_url="https://windtunnel-six.vercel.app")
+wt = WindTunnel(api_key="wt_...", base_url="https://windtunnel-ai.vercel.app")
 
 # 1. In production: record every agent interaction
 wt.record(
@@ -59,7 +59,7 @@ through both prompts using an LLM, and calls `check()` — all in one step.
 import os
 from windtunnel import WindTunnel
 
-wt = WindTunnel(api_key="wt_...", base_url="https://windtunnel-six.vercel.app")
+wt = WindTunnel(api_key="wt_...", base_url="https://windtunnel-ai.vercel.app")
 
 result = wt.run_windtunnel(
     baseline_prompt="You are a helpful support assistant.",
@@ -119,7 +119,7 @@ behaviour.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `api_key` | `str` | required | Your Windtunnel API key |
-| `base_url` | `str` | `"https://windtunnel-six.vercel.app"` | API base URL |
+| `base_url` | `str` | `"https://windtunnel-ai.vercel.app"` | API base URL |
 
 ---
 

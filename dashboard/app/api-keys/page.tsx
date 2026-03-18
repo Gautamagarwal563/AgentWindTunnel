@@ -167,7 +167,7 @@ function IntegrationSnippet() {
   const code = `import requests
 
 # Record an interaction
-requests.post("https://windtunnel-six.vercel.app/api/interactions",
+requests.post("https://windtunnel-ai.vercel.app/api/interactions",
   headers={"Authorization": "Bearer YOUR_API_KEY"},
   json={
     "session_id": "user-123",
@@ -178,7 +178,7 @@ requests.post("https://windtunnel-six.vercel.app/api/interactions",
   })
 
 # Run a regression check
-result = requests.post("https://windtunnel-six.vercel.app/api/runs",
+result = requests.post("https://windtunnel-ai.vercel.app/api/runs",
   headers={"Authorization": "Bearer YOUR_API_KEY"},
   json={
     "name": "Prompt v1 vs v2",

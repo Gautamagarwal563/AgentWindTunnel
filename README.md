@@ -24,7 +24,7 @@ When you change a system prompt, you have no idea if it's better or worse until 
    ...
 
 🚫 DEPLOY BLOCKED — 60% regression rate (12/20 worse)
-   View results: https://windtunnel-six.vercel.app/run/abc-123
+   View results: https://windtunnel-ai.vercel.app/run/abc-123
 ```
 
 ---
@@ -211,7 +211,7 @@ python vibe_coding_demo.py
 
 ```
 windtunnel/
-├── dashboard/          # Next.js app (live at windtunnel-six.vercel.app)
+├── dashboard/          # Next.js app (live at windtunnel-ai.vercel.app)
 │   ├── app/
 │   │   ├── api/        # REST API (interactions, runs, notify)
 │   │   ├── dashboard/  # Run history

@@ -194,7 +194,7 @@ export default function LandingPage() {
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#B0B0A8', flexShrink: 0 }}>
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
-                app.windtunnel-six.vercel.app/dashboard
+                app.windtunnel-ai.vercel.app/dashboard
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {['←', '→', '↻'].map(s => (
@@ -341,7 +341,7 @@ export default function LandingPage() {
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FEBC2E' }} />
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28C840' }} />
                 <div style={{ flex: 1, marginLeft: 8, background: '#F4F4F2', border: '1px solid #D4D4CE', borderRadius: 4, padding: '2px 10px', fontSize: 10, color: '#B0B0A8', fontFamily: 'ui-monospace, monospace' }}>
-                  app.windtunnel-six.vercel.app/runs/r_9xk2p
+                  app.windtunnel-ai.vercel.app/runs/r_9xk2p
                 </div>
               </div>
               {/* Content */}
@@ -384,7 +384,7 @@ export default function LandingPage() {
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FEBC2E' }} />
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28C840' }} />
                 <div style={{ flex: 1, marginLeft: 8, background: '#F4F4F2', border: '1px solid #D4D4CE', borderRadius: 4, padding: '2px 10px', fontSize: 10, color: '#B0B0A8', fontFamily: 'ui-monospace, monospace' }}>
-                  app.windtunnel-six.vercel.app/runs/r_7mn3q
+                  app.windtunnel-ai.vercel.app/runs/r_7mn3q
                 </div>
               </div>
               {/* Content */}

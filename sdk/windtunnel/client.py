@@ -38,7 +38,7 @@ class WindTunnel:
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://windtunnel-six.vercel.app",
+        base_url: str = "https://windtunnel-ai.vercel.app",
         supabase_url: Optional[str] = None,
         supabase_key: Optional[str] = None,
         anthropic_api_key: Optional[str] = None,

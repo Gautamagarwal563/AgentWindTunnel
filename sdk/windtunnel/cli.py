@@ -65,11 +65,11 @@ def check(api_key, baseline, challenger, n, openai_key, anthropic_key, fail_on_r
     elif verdict == 'APPROVED':
         click.echo(f"✅ DEPLOY APPROVED — {regression_rate}% regression rate ({worse}/{total} worse)")
         click.echo(f"   Run ID: {run_id}")
-        click.echo(f"   View: https://windtunnel-six.vercel.app/run/{run_id}")
+        click.echo(f"   View: https://windtunnel-ai.vercel.app/run/{run_id}")
     else:
         click.echo(f"➖ NEUTRAL — {regression_rate}% regression rate ({worse}/{total} worse)")
         click.echo(f"   Run ID: {run_id}")
-        click.echo(f"   View: https://windtunnel-six.vercel.app/run/{run_id}")
+        click.echo(f"   View: https://windtunnel-ai.vercel.app/run/{run_id}")
 
 
 @cli.command()

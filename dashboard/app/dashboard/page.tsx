@@ -255,7 +255,7 @@ export default function DashboardPage() {
                     <h4 className="text-sm font-medium mb-1.5 text-white">Record interactions</h4>
                     <p className="text-xs mb-4" style={{ color: '#444' }}>Send your agent's inputs and outputs to Windtunnel.</p>
                     <pre className="rounded-lg px-3 py-2.5 text-[10px] font-mono leading-relaxed overflow-x-auto" style={{ background: '#000', border: '1px solid #111', color: '#666' }}>{`requests.post(
-  "https://windtunnel-six.vercel.app/api/interactions",
+  "https://windtunnel-ai.vercel.app/api/interactions",
   headers={"Authorization":
     "Bearer YOUR_API_KEY"},
   json={
@@ -270,7 +270,7 @@ export default function DashboardPage() {
                     <h4 className="text-sm font-medium mb-1.5 text-white">Run a regression check</h4>
                     <p className="text-xs mb-4" style={{ color: '#444' }}>Compare baseline vs challenger and get a verdict.</p>
                     <pre className="rounded-lg px-3 py-2.5 text-[10px] font-mono leading-relaxed overflow-x-auto" style={{ background: '#000', border: '1px solid #111', color: '#666' }}>{`result = requests.post(
-  "https://windtunnel-six.vercel.app/api/runs",
+  "https://windtunnel-ai.vercel.app/api/runs",
   headers={"Authorization":
     "Bearer YOUR_API_KEY"},
   json={

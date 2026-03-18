@@ -231,7 +231,7 @@ def main():
     print("=" * 60)
 
     print(f"\n🔗 View detailed results in the dashboard:")
-    print(f"   https://windtunnel-six.vercel.app/run/{result['run_id']}")
+    print(f"   https://windtunnel-ai.vercel.app/run/{result['run_id']}")
     print(f"\n[INFO] Run ID: {result['run_id']}")
 
     return result

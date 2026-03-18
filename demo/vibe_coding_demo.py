@@ -19,7 +19,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 PROJECT_API_KEY = os.getenv('PROJECT_API_KEY')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
-WINDTUNNEL_BASE_URL = os.getenv('WINDTUNNEL_BASE_URL', 'https://windtunnel-six.vercel.app')
+WINDTUNNEL_BASE_URL = os.getenv('WINDTUNNEL_BASE_URL', 'https://windtunnel-ai.vercel.app')
 
 # ============================================================
 # PROMPTS

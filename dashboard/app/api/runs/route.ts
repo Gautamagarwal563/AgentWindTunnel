@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (verdict === 'BLOCKED') {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://windtunnel-six.vercel.app'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://windtunnel-ai.vercel.app'
     await fetch(`${baseUrl}/api/notify`, {
       method: 'POST',
       headers: {
