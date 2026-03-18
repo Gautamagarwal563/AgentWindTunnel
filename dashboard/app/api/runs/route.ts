@@ -152,15 +152,15 @@ export async function POST(request: NextRequest) {
   }
 
   if (verdict === 'BLOCKED') {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-    fetch(`${baseUrl}/api/notify`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://windtunnel-six.vercel.app'
+    await fetch(`${baseUrl}/api/notify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: request.headers.get('Authorization') ?? '',
       },
       body: JSON.stringify({
-        run_id: run.id,
+        run_id: updatedRun.id,
         verdict,
         regression_rate,
         run_name: body.name ?? null,
