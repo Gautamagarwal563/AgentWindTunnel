@@ -23,9 +23,9 @@ import argparse
 import requests
 
 
-SUPABASE_URL = 'https://ovaaeoufpwwbnymdcdpi.supabase.co'
-PROJECT_REF = 'ovaaeoufpwwbnymdcdpi'
-SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YWFlb3VmcHd3Ym55bWRjZHBpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzUzMjc3OCwiZXhwIjoyMDg5MTA4Nzc4fQ.KsqeYhcq22vaI3ly2KReEcuXGYGYPYcQcM2XNmaMMwU'
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+PROJECT_REF = SUPABASE_URL.split('//')[1].split('.')[0] if SUPABASE_URL else ''
+SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
 
 SCHEMA_SQL = """
 -- Projects (different agents)

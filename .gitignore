@@ -17,6 +17,9 @@ dashboard/.next/
 dashboard/.env.local
 dashboard/.env
 
+# Demo secrets
+demo/.env
+
 # Supabase
 supabase/.temp/
 

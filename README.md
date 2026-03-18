@@ -1,21 +1,21 @@
-# Agent Windtunnel
+# Windtunnel
 
 **The deploy gate for AI agents.**
 
-Windtunnel catches prompt regressions before they reach users. Record production traffic, replay it against your new prompt, and block bad deploys automatically — all in under 2 minutes.
+Catch prompt regressions before they reach your users. Record production traffic, replay it against your new prompt, and block bad deploys automatically.
 
-![Landing](docs/screenshots/landing.png)
+![Windtunnel landing page](screenshots/landing.png)
 
 ---
 
 ## Why Windtunnel?
 
-When you change a prompt, how do you know it's better? You can't A/B test forever, and you can't manually review thousands of conversations. Windtunnel solves this by:
+When you change a system prompt, you have no idea if it's better or worse until users complain. Windtunnel fixes that:
 
-1. **Recording** real user interactions from your production agent
-2. **Replaying** them through your baseline and challenger prompts
-3. **Judging** each response with Claude as an LLM-as-judge
-4. **Blocking** the deploy if regression exceeds your threshold
+1. **Record** — wrap your agent to log every production interaction
+2. **Replay** — before deploying, run those interactions through both the old and new prompt
+3. **Judge** — Claude scores each response pair: `better`, `worse`, or `neutral`
+4. **Block** — if the regression rate exceeds your threshold, the deploy is blocked automatically
 
 ```
 🌪️  Windtunnel check starting...
@@ -24,20 +24,18 @@ When you change a prompt, how do you know it's better? You can't A/B test foreve
    ...
 
 🚫 DEPLOY BLOCKED — 60% regression rate (12/20 worse)
-   Run ID: abc-123
+   View results: https://windtunnel-six.vercel.app/run/abc-123
 ```
 
 ---
 
 ## Screenshots
 
-| Dashboard | Run Detail |
-|-----------|------------|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Run Detail](docs/screenshots/run_detail.png) |
+| Landing | Demo |
+|---------|------|
+| ![Landing](screenshots/landing.png) | ![Demo](screenshots/demo.png) |
 
-| API Keys | Login |
-|----------|-------|
-| ![API Keys](docs/screenshots/apikeys.png) | ![Login](docs/screenshots/login.png) |
+![Docs](screenshots/docs.png)
 
 ---
 
@@ -49,7 +47,7 @@ When you change a prompt, how do you know it's better? You can't A/B test foreve
 pip install windtunnel-ai
 ```
 
-### 2. Record interactions from your agent
+### 2. Record interactions from your production agent
 
 ```python
 from windtunnel import WindTunnel
@@ -66,25 +64,27 @@ wt.record(
 )
 ```
 
-### 3. Run a regression check
+### 3. Run a regression check before deploying
 
-```bash
-export WINDTUNNEL_API_KEY=wt_your_key
-export ANTHROPIC_API_KEY=sk-ant-...
-export SUPABASE_SERVICE_KEY=your_service_key
+```python
+result = wt.run_windtunnel(
+    baseline_prompt=CURRENT_PROMPT,
+    challenger_prompt=NEW_PROMPT,
+    n_interactions=20,
+    anthropic_api_key="sk-ant-...",
+    run_name="v2 prompt change"
+)
 
-windtunnel check \
-  --baseline @prompts/v1.txt \
-  --challenger @prompts/v2.txt \
-  --n 20 \
-  --fail-on-regression
+if result["verdict"] == "BLOCKED":
+    print(f"Deploy blocked — {result['regression_rate']}% regression rate")
+    exit(1)
 ```
 
 ---
 
 ## CI/CD Integration
 
-Add to your GitHub Actions workflow to automatically block bad prompt deploys:
+Automatically block bad prompt changes in GitHub Actions:
 
 ```yaml
 name: Windtunnel Check
@@ -100,48 +100,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Windtunnel
-        run: pip install windtunnel-ai
-
-      - name: Run regression check
+      - name: Run Windtunnel regression check
         run: |
+          pip install windtunnel-ai
           windtunnel check \
-            --baseline @prompts/baseline.txt \
-            --challenger @prompts/challenger.txt \
-            --n 20 \
+            --baseline-version v1 \
+            --challenger-prompt prompts/v2.txt \
+            --n-interactions 20 \
             --fail-on-regression
         env:
           WINDTUNNEL_API_KEY: ${{ secrets.WINDTUNNEL_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 ```
 
 ---
 
-## How It Works
+## How the judge works
 
-```
-Production Agent
-      │
-      ▼
-wt.record(user_input, agent_output)   ← captures real conversations
-      │
-      ▼
-Supabase (interaction store)
-      │
-      ▼
-windtunnel check                      ← on every prompt change
-      │
-      ├── Replay through baseline prompt → baseline_output
-      ├── Replay through challenger prompt → challenger_output
-      └── Claude judges: better / worse / neutral
-            │
-            ▼
-      regression_rate = worse / total
-            │
-      ≥ 30% → BLOCKED (exit 1)        ← CI fails, deploy blocked
-      < 30% → APPROVED (exit 0)       ← safe to deploy
-```
+Windtunnel uses **Claude Haiku** as an LLM-as-judge. For each interaction it receives:
+- The baseline output (current production prompt's response)
+- The challenger output (new prompt's response)
+
+And returns one of:
+- `better` — challenger improved the response
+- `worse` — challenger regressed the response
+- `neutral` — no meaningful difference
+
+If `worse / total > threshold` (default **30%**), the run verdict is `BLOCKED`.
 
 ---
 
@@ -150,30 +135,34 @@ windtunnel check                      ← on every prompt change
 ```python
 from windtunnel import WindTunnel
 
-wt = WindTunnel(
-    api_key="wt_...",                  # from dashboard /api-keys
-    anthropic_api_key="sk-ant-...",    # or ANTHROPIC_API_KEY env var
-)
+wt = WindTunnel(api_key="wt_...")
 
 # Record a production interaction
 wt.record(
-    user_input: str,
-    agent_output: str,
-    prompt_version: str = "v1",
-    model: str = "claude-haiku-4-5-20251001",
-    metadata: dict = {},
-    session_id: str = None             # auto-generated if not provided
+    user_input="How do I reset my password?",
+    agent_output="Go to Settings > Security > Reset Password...",
+    prompt_version="v1",
+    model="gpt-4o-mini",           # optional metadata
+    metadata={"source": "prod"},   # optional
 )
 
-# Run a comparison
+# Run a regression check
 result = wt.run_windtunnel(
-    baseline_prompt: str,
-    challenger_prompt: str,
-    n_interactions: int = 10,
-    baseline_version: str = "v1",
-    challenger_version: str = "v2",
+    baseline_prompt=CURRENT_PROMPT,
+    challenger_prompt=NEW_PROMPT,
+    n_interactions=20,             # how many recorded interactions to test
+    baseline_version="v1",
+    challenger_version="v2",
+    run_name="My prompt change",
+    anthropic_api_key="sk-ant-...",
 )
-# Returns: { verdict, regression_rate, better, worse, neutral, run_id }
+# result = {
+#   "verdict": "BLOCKED" | "APPROVED",
+#   "regression_rate": 57.1,
+#   "better": 3, "worse": 4, "neutral": 0,
+#   "run_id": "uuid",
+#   "results": [{ "score": "worse", "reasoning": "..." }, ...]
+# }
 ```
 
 ---
@@ -183,59 +172,81 @@ result = wt.run_windtunnel(
 ```
 windtunnel check [OPTIONS]
 
-  --api-key TEXT          WindTunnel API key  [env: WINDTUNNEL_API_KEY]
-  --anthropic-key TEXT    Anthropic API key   [env: ANTHROPIC_API_KEY]
-  --baseline TEXT         Baseline prompt or @file.txt  [required]
-  --challenger TEXT       Challenger prompt or @file.txt  [required]
-  --n INTEGER             Interactions to test  [default: 10]
-  --fail-on-regression    Exit 1 if BLOCKED
+  --api-key TEXT              WindTunnel API key  [env: WINDTUNNEL_API_KEY]
+  --anthropic-key TEXT        Anthropic API key   [env: ANTHROPIC_API_KEY]
+  --baseline-version TEXT     Baseline prompt version to fetch  [required]
+  --challenger-prompt TEXT    Path to challenger prompt file    [required]
+  --n-interactions INTEGER    Number of interactions to test    [default: 10]
+  --threshold FLOAT           Regression threshold              [default: 0.3]
+  --fail-on-regression        Exit 1 if verdict is BLOCKED
 
-windtunnel status         Verify connection and API key
+windtunnel status             Verify connection and API key
 ```
 
 ---
 
-## Project Structure
+## Demo scripts
+
+Two end-to-end demos are included in `demo/`:
+
+**Customer support agent** (`demo/demo_agent.py`)
+- Records 5 real support interactions with a good prompt
+- Tests a "simplified" lazy prompt as challenger
+- Result: 🚫 BLOCKED — 80% regression rate
+
+**Vibe coding agent** (`demo/vibe_coding_demo.py`)
+- Tests a production-quality HTML generation prompt vs a lazy one
+- Uses Claude Haiku to generate full websites for 7 test cases
+- Result: 🚫 BLOCKED — 57% regression rate
+
+```bash
+cd demo
+cp .env.example .env  # fill in PROJECT_API_KEY and ANTHROPIC_API_KEY
+python vibe_coding_demo.py
+```
+
+---
+
+## Project structure
 
 ```
 windtunnel/
-├── dashboard/          # Next.js dashboard (deploy to Vercel)
+├── dashboard/          # Next.js app (live at windtunnel-six.vercel.app)
 │   ├── app/
-│   │   ├── page.tsx           # Landing page
-│   │   ├── dashboard/         # Runs overview
-│   │   ├── run/[id]/          # Run detail + results
-│   │   ├── interactions/      # Recorded interactions
-│   │   ├── api-keys/          # Project & API key management
-│   │   └── docs/              # Documentation
-│   └── ...
-├── sdk/                # Python SDK + CLI (pip install windtunnel-ai)
+│   │   ├── api/        # REST API (interactions, runs, notify)
+│   │   ├── dashboard/  # Run history
+│   │   ├── run/[id]/   # Per-run detail view
+│   │   ├── demo/       # Interactive demo (no signup needed)
+│   │   └── docs/       # Documentation
+│   └── lib/
+│       ├── judge.ts    # LLM judge using Claude Haiku
+│       └── supabase-server.ts
+├── sdk/                # Python SDK — published to PyPI as windtunnel-ai
 │   └── windtunnel/
-│       ├── client.py          # WindTunnel class
-│       └── cli.py             # windtunnel CLI
-├── supabase/           # Database schema & migrations
-└── docs/screenshots/   # Product screenshots
+│       ├── client.py   # WindTunnel class
+│       └── cli.py      # windtunnel CLI
+├── demo/               # End-to-end demo scripts
+└── schema.sql          # Supabase schema
 ```
 
 ---
 
-## Self-Hosting
+## Self-hosting
 
-### Dashboard (Vercel)
+You'll need a Supabase project, Anthropic API key, and Resend API key.
 
-```bash
-cd dashboard
-vercel deploy
+1. Run `schema.sql` in the Supabase SQL editor
+2. Deploy the `dashboard/` folder to Vercel
+3. Set these environment variables in Vercel:
+
 ```
-
-Set environment variables in Vercel:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-### Database (Supabase)
-
-```bash
-# Apply schema
-psql $DATABASE_URL < schema.sql
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ANTHROPIC_API_KEY=
+RESEND_API_KEY=
+NOTIFY_EMAIL=           # receives blocked-deploy alerts
+NEXT_PUBLIC_APP_URL=    # your deployed URL
 ```
 
 ---
@@ -246,14 +257,4 @@ MIT — free to use, modify, and distribute.
 
 ---
 
-## Contributing
-
-PRs welcome. Open an issue first for large changes.
-
-1. Fork the repo
-2. Create a feature branch
-3. Submit a PR with a clear description
-
----
-
-Built with [Claude](https://anthropic.com) · [Next.js](https://nextjs.org) · [Supabase](https://supabase.com)
+Built with [Claude](https://anthropic.com) · [Next.js](https://nextjs.org) · [Supabase](https://supabase.com) · [Resend](https://resend.com)

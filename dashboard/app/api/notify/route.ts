@@ -54,13 +54,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ sent: false, reason: 'RESEND_API_KEY not configured' }, { headers: CORS_HEADERS })
   }
 
-  const { data: userData, error: userError } = await supabase.auth.admin.getUserById(project.user_id)
+  let ownerEmail = process.env.NOTIFY_EMAIL ?? null
 
-  if (userError || !userData?.user?.email) {
-    return NextResponse.json({ error: 'Could not resolve project owner email' }, { status: 500, headers: CORS_HEADERS })
+  if (!ownerEmail && project.user_id) {
+    const { data: userData } = await supabase.auth.admin.getUserById(project.user_id)
+    ownerEmail = userData?.user?.email ?? null
   }
 
-  const ownerEmail = userData.user.email
+  if (!ownerEmail) {
+    return NextResponse.json({ error: 'Could not resolve project owner email' }, { status: 500, headers: CORS_HEADERS })
+  }
   const runName = body.run_name ?? `Run ${body.run_id}`
   const projectName = body.project_name ?? project.name ?? 'your project'
   const regressionPct = `${(body.regression_rate * 100).toFixed(1)}%`
